@@ -20,4 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Main module."""
+import hydra
+from omegaconf import DictConfig
+from rich import pretty
+
+
+@hydra.main(config_path="../examples", config_name="config")
+def main(cfg: DictConfig):
+    pretty.pprint(cfg)
+
+if __name__ == "__main__":
+    main()
