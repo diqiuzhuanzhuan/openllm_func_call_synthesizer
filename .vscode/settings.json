@@ -1,5 +1,7 @@
 {
   "files.exclude": {
-    "src/openllm_func_call_synthesizer.egg-info": true
+    "src/openllm_func_call_synthesizer.egg-info": true,
+    "**/__pycache__": true,
+    "**/__pycache__.*": true
   }
 }
