@@ -9,8 +9,8 @@ query_generation:
     - Chinese
     - Japanese
     - German
-    - French
-    - Spanish
+#    - French
+#    - Spanish
 
   name: "ugreen_function"
   output_dir: "data"
@@ -19,7 +19,7 @@ query_generation:
 
 function_call_generation:
   function_dataset: "data/ugreen_function/"
-  max_num: 100
+  max_num: 100 # max number of function calls to generate, -1 means all
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
   name: "data/ugreen_function_call"
