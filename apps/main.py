@@ -29,7 +29,7 @@ import json
 from pathlib import Path
 
 
-def query_generator(cfg: DictConfig):
+def generate_query_dataset(cfg: DictConfig):
     data_file = cfg.synthesizer.query_generation.function_docs
     if not Path(data_file).exists():
         raise FileNotFoundError(f"File {data_file} not found")
@@ -117,7 +117,7 @@ def main(cfg: DictConfig):
     pretty.pprint(llm_cfg)
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    #query_generator(cfg)
+    generate_query_dataset(cfg)
     generate_function_call_dataset(cfg)
 
 if __name__ == "__main__":
