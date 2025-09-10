@@ -66,6 +66,46 @@ def read_yaml(path: Path) -> dict[str, Any]:
         raise RuntimeError("PyYAML is required to read YAML config files. Install with `pip install pyyaml`.")
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
+
+
+from typing import Union, List, Dict
+import pandas as pd
+from datasets import Dataset
+
+def pick_unique(dataset: Union[List[Dict], pd.DataFrame, Dataset], field: str, k: int = 4) -> Union[List[Dict], pd.DataFrame, Dataset]:
+    """
+    select K samples from dataset where the specific field values are all different.
+
+    parameters：
+        dataset: list[dict] / pandas.DataFrame / HuggingFace Dataset
+        field: the unique field name
+        k:  select how many elements
+
+    """
+    # list of dict
+    if isinstance(dataset, list):
+        seen = set()
+        result = []
+        for item in dataset:
+            value = item[field]
+            if value not in seen:
+                seen.add(value)
+                result.append(item)
+            if len(result) == k:
+                break
+        return result
+
+    # pandas.DataFrame
+    elif isinstance(dataset, pd.DataFrame):
+        return dataset.drop_duplicates(subset=[field]).head(k)
+
+    # HuggingFace Dataset
+    elif Dataset is not None and isinstance(dataset, Dataset):
+        df = dataset.to_pandas().drop_duplicates(subset=[field]).head(k)
+        return Dataset.from_pandas(df)
+
+    else:
+        raise TypeError("Unsupported dataset type: must be list[dict], pandas.DataFrame, or HuggingFace Dataset.")
     
 
 if __name__ == "__main__":

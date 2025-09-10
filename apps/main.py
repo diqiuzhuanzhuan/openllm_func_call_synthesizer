@@ -25,6 +25,7 @@ from omegaconf import DictConfig, OmegaConf
 from rich import pretty
 from openllm_func_call_synthesizer.core.synthesizer import QueryGenerator, FunctionCallGenerator
 from datasets import Dataset, concatenate_datasets
+from openllm_func_call_synthesizer.utils import pick_unique
 import json
 from pathlib import Path
 
@@ -85,18 +86,23 @@ def generate_function_call_dataset(cfg: DictConfig):
     print(f"Found {len(hashes)} unique functions")
     import random
     chosen = random.sample(hashes, len(hashes))
-    # filter to only those hashes
-    sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
+    # filter to only those hashes, select all currently because the number of functions is small
+    sampled = pick_unique(dataset['train'], 'function_hash', len(chosen))
+    
+    #sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
     print(sampled)
+    functions = sampled['function']
     function_call_generator = FunctionCallGenerator(
         model_name=cfg.llm.function_call.model,
         backend=cfg.llm.function_call.backend,
     )
     max_num = cfg.synthesizer.function_call_generation.max_num
     if max_num > 0:
-        fcg = function_call_generator(dataset=dataset['train'].select(range(max_num)))
+        dataset = dataset["train"].select(range(max_num))
     else:
-        fcg = function_call_generator(dataset=dataset['train'])
+        dataset = dataset["train"]
+    dataset = dataset.map(lambda x: {'function': functions})
+    fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk
     output_dir = Path(cfg.synthesizer.function_call_generation.output_dir)/cfg.synthesizer.function_call_generation.name
@@ -117,7 +123,7 @@ def main(cfg: DictConfig):
     pretty.pprint(llm_cfg)
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    generate_query_dataset(cfg)
+    #generate_query_dataset(cfg)
     generate_function_call_dataset(cfg)
 
 if __name__ == "__main__":
