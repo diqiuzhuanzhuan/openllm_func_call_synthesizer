@@ -3,5 +3,6 @@
     "src/openllm_func_call_synthesizer.egg-info": true,
     "**/__pycache__": true,
     "**/__pycache__.*": true
-  }
+  },
+  "python.envFile": "${workspaceFolder}/.env"
 }

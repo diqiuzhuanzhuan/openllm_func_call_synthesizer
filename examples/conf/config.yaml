@@ -1,0 +1,4 @@
+# primary config composing other structured configs
+defaults:
+  - llm: default
+  - synthesizer: default
