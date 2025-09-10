@@ -23,11 +23,13 @@
 from .utils import (
     read_yaml,
     extract_format,
-    convert_to_mcp_tools
+    convert_to_mcp_tools,
+    pick_unique,
 )
 
 __ALL__ = [
     "read_yaml",
     "extract_format",
-    "convert_to_mcp_tools"
+    "convert_to_mcp_tools",
+    "pick_unique",
 ]
