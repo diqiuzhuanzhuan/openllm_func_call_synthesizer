@@ -27,6 +27,13 @@ uv add openllm_func_call_synthesizer
 pip install openllm_func_call_synthesizer
 ```
 
+Install from the source code
+```sh
+git clone https://github.com/diqiuzhuanzhuan/openllm_func_call_synthesizer.git
+cd openllm_func_call_synthesizer
+uv sync
+```
+
 For more installation options, see [docs/installation.md](docs/installation.md).
 
 ## Usage
