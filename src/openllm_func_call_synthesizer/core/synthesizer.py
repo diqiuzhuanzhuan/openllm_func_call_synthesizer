@@ -72,6 +72,7 @@ class FunctionCallGenerator(curator.LLM):
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             input["function_call"] = function_call
+        input['prompt'] = self.prompt(input)
         return input
 
 from pydantic import BaseModel, Field
