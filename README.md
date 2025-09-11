@@ -18,6 +18,13 @@ A tool for generating synthetic function call datasets for Large Language Models
 - Extensible and easy to integrate into your own pipeline
 
 ## Installation
+### prerequisition
+
+```sh
+# install uv (a modern python package management tool)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 
 You can install the stable release from PyPI:
 
