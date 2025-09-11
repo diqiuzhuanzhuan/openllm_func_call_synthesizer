@@ -2,7 +2,7 @@
 name: "default_synthesizer"
 
 query_generation:
-  function_docs: /Users/ugreen/GitHub/openllm_func_call_synthesizer/examples/function_docs.json
+  function_docs: /data0/work/WeiqiLuo/openllm_func_call_synthesizer/examples/function_docs.json
 
   languages: 
     - English
@@ -19,7 +19,7 @@ query_generation:
 
 function_call_generation:
   function_dataset: "data/ugreen_function/"
-  max_num: 100 # max number of function calls to generate, -1 means all
+  max_num: 101 # max number of function calls to generate, -1 means all
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
   name: "data/ugreen_function_call"
