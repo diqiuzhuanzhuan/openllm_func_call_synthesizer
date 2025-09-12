@@ -123,7 +123,7 @@ def main(cfg: DictConfig):
     pretty.pprint(llm_cfg)
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    #generate_query_dataset(cfg)
+    generate_query_dataset(cfg)
     generate_function_call_dataset(cfg)
 
 if __name__ == "__main__":

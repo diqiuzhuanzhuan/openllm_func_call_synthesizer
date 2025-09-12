@@ -16,6 +16,10 @@ providers:
       - "claude-sonnet-4-20250514"
       - "claude-3-5-sonnet-20241022"
 
+  google:
+    backend: "openai"
+    models:
+      - "gemini-2.5-flash-lite"
 
 function_call:
   provider: openai
