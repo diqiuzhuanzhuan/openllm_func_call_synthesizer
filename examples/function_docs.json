@@ -1,0 +1,191 @@
+{
+  "tools": [
+    {
+      "name": "create_album",
+      "description": "Create a new photo album",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "album_name": {
+            "type": "string",
+            "description": "The name of the album to be created"
+          },
+          "album_type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "face",
+              "baby",
+              "condition"
+            ],
+            "description": "The type of the album. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album)"
+          }
+        },
+        "required": [
+          "album_name",
+          "album_type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "search_photos",
+      "description": "Search for photos or images",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "The search keyword for photos or images. It can be descriptive text or a file name, e.g., 'photos taken last August' or 'dog on the grass'."
+          }
+        },
+        "required": [
+          "keyword"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_album_list",
+      "description": "Retrieve the list of photo albums",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "album_type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "face",
+              "baby",
+              "condition",
+              "common"
+            ],
+            "description": "The type of album to retrieve. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album), common (object recognition album)."
+          }
+        },
+        "required": [
+          "album_type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "music_play_control",
+      "description": "Music control tool: play, or stop songs, albums, artists, playlists, and other music content. Supports playback modes, timers, and retrieving content from recent history or favorites.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Name or title of the music content, can be song, album, artist, or playlist."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "song",
+              "album",
+              "artist",
+              "playlist"
+            ],
+            "description": "Music content type: song, album, artist, or playlist. Auto-detect if not specified."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "favorites"
+            ],
+            "description": "Content source: recent=recently played, favorites=liked songs. Only specify when user explicitly mentions recent or favorite content."
+          },
+          "play_mode": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "random",
+              "single",
+              "loop"
+            ],
+            "description": "Playback mode: normal=sequential, random=shuffle, single=repeat single track, loop=repeat all."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "music_settings_control",
+      "description": "Control music app settings",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "auto_stop_time": {
+            "type": "number",
+            "description": "Set sleep timer duration, for example, stop playback after 15 minutes"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "video_search_control",
+      "description": "Video search tool: search TV series, movies, and other video content. ",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Name or title of the video content, supports fuzzy matching."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tv",
+              "movie",
+              "collection"
+            ],
+            "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "video_play_control",
+      "description": "Video play tool: play TV series, movies, and other video content. Supports retrieving content from recently watched history and favorites.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Name or title of the video content, supports fuzzy matching."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "tv",
+              "movie",
+              "collection"
+            ],
+            "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "favorites"
+            ],
+            "description": "Content source: recent=recently watched, favorites=favorite content. Only specify when user mentions recent or favorite content."
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
