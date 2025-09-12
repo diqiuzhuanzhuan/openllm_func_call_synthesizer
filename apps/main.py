@@ -90,11 +90,11 @@ def generate_function_call_dataset(cfg: DictConfig):
     sampled = pick_unique(dataset['train'], 'function_hash', len(chosen))
     
     #sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
-    print(sampled)
+    print(f"sampled {len(sampled)} functions: {sampled}")
     functions = sampled['function']
+    fc_kwargs = OmegaConf.to_container(cfg.llm.function_call, resolve=True)
     function_call_generator = FunctionCallGenerator(
-        model_name=cfg.llm.function_call.model,
-        backend=cfg.llm.function_call.backend,
+        **fc_kwargs
     )
     max_num = cfg.synthesizer.function_call_generation.max_num
     if max_num > 0:
