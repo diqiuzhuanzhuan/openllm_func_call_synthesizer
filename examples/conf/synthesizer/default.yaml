@@ -2,7 +2,7 @@
 name: "default_synthesizer"
 
 query_generation:
-  function_docs: /data0/work/WeiqiLuo/openllm_func_call_synthesizer/examples/function_docs.json
+  function_docs: examples/function_docs.json
 
   languages: 
     - English
