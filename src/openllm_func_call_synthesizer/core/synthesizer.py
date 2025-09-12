@@ -66,7 +66,7 @@ class FunctionCallGenerator(curator.LLM):
 
     def parse(self, input: Dict, response) -> Dict:
         """Parse the response to extract the function call or the message."""
-        if "tool_calls" in response["choices"][0]["message"]:
+        if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = str([tool_call["function"] for tool_call in response["choices"][0]["message"]["tool_calls"]])
         else:
             # Handle the case where the model returns a string instead of a function call
