@@ -36,7 +36,7 @@ def generate_query_dataset(cfg: DictConfig):
         raise FileNotFoundError(f"File {data_file} not found")
     with open(data_file, "r") as f:
         data = json.load(f)
-    data = Dataset.from_list([{'function': e} for e in data['tools']])
+    data = [{'function': e} for e in data['tools']]
     # Loop over configured languages to generate multilingual query variations
     languages = cfg.synthesizer.query_generation.get('languages', ['English'])
     output_datasets = []
