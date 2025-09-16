@@ -23,11 +23,10 @@ providers:
 
 function_call:
   # for ollama
-  model_name: "ollama/qwen3:4b-instruct-2507-q4_K_M"
+  model_name: "ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
   backend: litellm
   backend_params:
     base_url: "http://192.168.111.3:11434"
-
   # for openai
   #model_name: "gpt-4o"
   #backend: "openai"
