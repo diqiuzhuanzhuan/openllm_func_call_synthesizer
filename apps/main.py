@@ -36,7 +36,7 @@ def generate_query_dataset(cfg: DictConfig):
         raise FileNotFoundError(f"File {data_file} not found")
     with open(data_file, "r") as f:
         data = json.load(f)
-    data = [{'function': e} for e in data['tools']]
+    data = [{'function': json.dumps(e, ensure_ascii=False, indent=2)} for e in data['tools']]
     # Loop over configured languages to generate multilingual query variations
     languages = cfg.synthesizer.query_generation.get('languages', ['English'])
     output_datasets = []
@@ -101,7 +101,7 @@ def generate_function_call_dataset(cfg: DictConfig):
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {'function': functions})
+    dataset = dataset.map(lambda x: {'functions': functions})
     fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk

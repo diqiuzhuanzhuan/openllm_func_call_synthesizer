@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import json
 from xxhash import xxh64
 from typing import Dict, List
 from datasets import Dataset
@@ -34,45 +35,54 @@ class FunctionCallGenerator(curator.LLM):
 
     return_completions_object = True
 
+    def _format_functions(self, functions: List[str]) -> str:
+        """Format a list of function definitions into a human-readable block."""
+        funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
+        return "\n\n".join(funcs)
+
     def prompt(self, input: Dict) -> str:
-        """The prompt is used to generate the function call."""
-        return f"""
-        You are an expert in structured function calling.
+            """The prompt is used to generate the function call."""
+            # Prepare a readable listing of available functions
+            functions_block = self._format_functions(input.get('functions', []))
+            return f"""
+            You are an expert in structured function calling.
 
-        The user request is:
-        {input['query']}
+            The user request is:
+            {input['query']}
 
-        You have access to the following tools (with their names and parameter descriptions):
-        {input['function']}
+            You have access to the following functions:
+            {functions_block}
 
-        Your task:
-        - Select the most appropriate tool to fulfill the user request.
-        - Always include all required parameters for the selected tool.
-        - Use reasonable placeholder values if the user query does not provide explicit values.
-        - Generate a function call in strict JSON format.
-        - If no available tool can satisfy the request, output an empty JSON object: {{}}
-        - The output must ONLY be the JSON object, without any extra text.
+            Your task:
+            - Choose the most appropriate function to fulfill the request.
+            - Include all required parameters; use placeholders if not specified.
+            - Return ONLY a JSON object with `name` and `arguments`.
+            - If no function applies, return an empty JSON object: {{}}
 
-        Format:
-        {{
-        "name": "<function_name>",
-        "arguments": {{
-            "<param1>": "<value1>",
-            "<param2>": "<value2>"
-        }}
-        }}
-        """
+            Desired format:
+            {{
+                "name": "<function_name>",
+                "arguments": {{
+                    "param1": "value1",
+                    "param2": "value2"
+                }}
+            }}
+            """
 
 
     def parse(self, input: Dict, response) -> Dict:
         """Parse the response to extract the function call or the message."""
+        input['prompt'] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = str([tool_call["function"] for tool_call in response["choices"][0]["message"]["tool_calls"]])
         else:
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
-            input["function_call"] = function_call
-        input['prompt'] = self.prompt(input)
+            if function_call is None:
+                raise ValueError("The model did not return a valid function call.")
+            else:
+                input['function_call'] = json.dumps(function_call)
+
         return input
 
 from pydantic import BaseModel, Field

@@ -186,6 +186,30 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "name": "get_system_info",
+      "description": "Retrieve detailed information about the device, operating system, storage, network status, warranty, or UGREEN Link account.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "system_type": {
+            "type": "string",
+            "description": "The category of information to query. Options: system=system info, device=device info, storage=storage info, network=network info, uglink=UGREEN Link related info.",
+            "enum": [
+              "system",
+              "device",
+              "storage",
+              "network",
+              "uglink"
+            ]
+          }
+        },
+        "required": [
+          "system_type"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }
