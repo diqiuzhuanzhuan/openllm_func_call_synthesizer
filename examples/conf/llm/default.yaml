@@ -27,6 +27,7 @@ function_call:
   backend: litellm
   backend_params:
     base_url: "http://192.168.111.3:11434"
+  prompt_type: "react"
   # for openai
   #model_name: "gpt-4o"
   #backend: "openai"

@@ -27,6 +27,7 @@ from datasets import Dataset
 from bespokelabs import curator
 from openllm_func_call_synthesizer.utils import extract_format
 from bespokelabs.curator.log import add_file_handler, logger
+from typing import Optional
 
 
 
@@ -35,49 +36,130 @@ class FunctionCallGenerator(curator.LLM):
 
     return_completions_object = True
 
-    def _format_functions(self, functions: List[str]) -> str:
+    def __init__(
+        self, 
+        prompt_type:str = "normal", 
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.prompt_type = prompt_type  
+
+    def _format_functions(self, functions: List[str], prompt_type:str = "normal") -> str:
         """Format a list of function definitions into a human-readable block."""
-        funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
-        return "\n\n".join(funcs)
+        if prompt_type == "normal":
+            funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
+            return "\n\n".join(funcs)
+        elif prompt_type == "react":
+            tool_descs = []
+            for function in functions:
+                json_function = json.loads(function)
+                tool_desc = (
+                    f"> Tool Name: {json_function['name']}\n"
+                    f"Tool Description: {json_function['description']}\n"
+                    f"Tool Args: {json.dumps(json_function['input_schema'], ensure_ascii=False)}\n"
+                )
+                tool_descs.append(tool_desc)
+            return tool_descs
+        else:
+            raise ValueError(f"Unknown prompt type: {prompt_type}")
+    
+
+    def react_prompt(self, input: Dict) -> str:
+        """React-style prompt that uses tool descriptions and names."""
+        # Format tool descriptions and extract tool names correctly
+        funcs = [json.loads(func) for func in input.get('functions', [])]
+        tool_descs = self._format_functions(input.get('functions', []), prompt_type="react")
+        tools_name = [f.get('name') for f in funcs]
+        return f"""
+        You are designed to help with a variety of tasks, from answering questions to providing summaries to other types of analyses.
+
+        ## Tools
+
+        You have access to a wide variety of tools. You are responsible for using the tools in any sequence you deem appropriate to complete the task at hand.
+        This may require breaking the task into subtasks and using different tools to complete each subtask.
+
+        You have access to the following tools:
+        {"\n".join(tool_descs)}
+        Below is the user's request:
+        {input['query']}
+
+        ## Output Format
+
+        Please answer in the same language as the question and use the following format:
+
+        ```
+        Thought: The current language of the user is: (user's language). I need to use a tool to help me answer the question.
+        Action: tool name (one of {", ".join(tools_name)}) if using a tool.
+        Action Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})
+        ```
+
+        Please ALWAYS start with a Thought.
+
+        NEVER surround your response with markdown code markers. You may use code markers within your response if you need to.
+
+        """
+
 
     def prompt(self, input: Dict) -> str:
-            """The prompt is used to generate the function call."""
-            # Prepare a readable listing of available functions
-            functions_block = self._format_functions(input.get('functions', []))
-            return f"""
-            You are an expert in structured function calling.
+        """The prompt is used to generate the function call."""
+        # Prepare a readable listing of available functions
+        if self.prompt_type == "react":
+            return self.react_prompt(input)
+        functions_block = self._format_functions(input.get('functions', []))
+        return f"""
+        You are an expert in structured function calling.
 
-            The user request is:
-            {input['query']}
+        The user request is:
+        {input['query']}
 
-            You have access to the following functions:
-            {functions_block}
+        You have access to the following functions:
+        {functions_block}
 
-            Your task:
-            - Choose the most appropriate function to fulfill the request.
-            - Include all required parameters; use placeholders if not specified.
-            - Return ONLY a JSON object with `name` and `arguments`.
-            - If no function applies, return an empty JSON object: {{}}
+        Your task:
+        - Choose the most appropriate function to fulfill the request.
+        - Include all required parameters; use placeholders if not specified.
+        - Return ONLY a JSON object with `name` and `arguments`.
+        - If no function applies, return an empty JSON object: {{}}
 
-            Desired format:
-            {{
-                "name": "<function_name>",
-                "arguments": {{
-                    "param1": "value1",
-                    "param2": "value2"
-                }}
+        Desired format:
+        {{
+            "name": "<function_name>",
+            "arguments": {{
+                "param1": "value1",
+                "param2": "value2"
             }}
-            """
+        }}
+        """
 
 
     def parse(self, input: Dict, response) -> Dict:
         """Parse the response to extract the function call or the message."""
-        input['prompt'] = self.prompt(input)
+        if self.prompt_type == "react":
+            input['prompt'] = self.react_prompt(input)
+        else:
+            input['prompt'] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = str([tool_call["function"] for tool_call in response["choices"][0]["message"]["tool_calls"]])
         else:
             # Handle the case where the model returns a string instead of a function call
-            function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
+            if self.prompt_type == "react":
+
+                def _extract_function_call(content: str) -> Optional[Dict]:
+                    """Extract the function call from the content."""
+
+                    # 提取 Action 名称
+                    import re
+                    action_match = re.search(r"Action:\s*(\w+)", content)
+                    action = action_match.group(1) if action_match else None
+
+                    # 提取 Action Input
+                    input_match = re.search(r"Action Input:\s*(\{.*\})", content, re.DOTALL)
+                    action_input = json.loads(input_match.group(1)) if input_match else None
+                    if action:
+                        return {"name": action, "arguments": action_input} if action_input else {"name": action}
+                function_call = _extract_function_call(response["choices"][0]["message"]["content"]) 
+            else:
+                function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             if function_call is None:
                 raise ValueError("The model did not return a valid function call.")
             else:
