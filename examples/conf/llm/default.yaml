@@ -22,12 +22,27 @@ providers:
       - "gemini-2.5-flash-lite"
 
 function_call:
-  # for ollama
-  model_name: "ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
-  backend: litellm
+  # # for ollama
+  # model_name: "ollama_chat/qwen3:4b-instruct-2507-q4_K_M"
+  # backend: litellm
+  # backend_params:
+  #   base_url: "http://192.168.111.3:11434"
+  #   require_all_responses: False
+  # # for openai
+  # model_name: "gpt-4o"
+  # backend: "openai"
+  # backend_params:
+  #   require_all_responses: False
+
+  model_name: "claude-sonnet-4-20250514"
+  backend: "openai"
   backend_params:
+<<<<<<< HEAD
     base_url: "http://192.168.111.3:11434"
+  prompt_type: "react"
   # for openai
   #model_name: "gpt-4o"
   #backend: "openai"
-
+=======
+    require_all_responses: False  
+>>>>>>> feat: update data
