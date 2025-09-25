@@ -13,12 +13,9 @@
           "album_type": {
             "type": "string",
             "enum": [
-              "normal",
-              "face",
-              "baby",
-              "condition"
+              "normal"
             ],
-            "description": "The type of the album. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album)"
+            "description": "The type of the album, default by normal"
           }
         },
         "required": [
@@ -47,7 +44,7 @@
     },
     {
       "name": "get_album_list",
-      "description": "Retrieve the list of photo albums",
+      "description": "Retrieve the list of photo albums, including regular albums, people albums, baby albums, conditional albums, and object recognition albums.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -58,9 +55,9 @@
               "face",
               "baby",
               "condition",
-              "common"
+              "object"  
             ],
-            "description": "The type of album to retrieve. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album), common (object recognition album)."
+            "description": "The type of album to retrieve. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album), object (object recognition album, 识物相册)."
           }
         },
         "required": [
@@ -71,23 +68,13 @@
     },
     {
       "name": "music_play_control",
-      "description": "Music control tool: play, or stop songs, albums, artists, playlists, and other music content. Supports playback modes, timers, and retrieving content from recent history or favorites.",
+      "description": "Music control tool: play songs, albums, artists, playlists, and other music content. Supports playback modes, and retrieving content from recent history or favorites.",
       "input_schema": {
         "type": "object",
         "properties": {
           "title": {
             "type": "string",
-            "description": "Name or title of the music content, can be song, album, artist, or playlist."
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "song",
-              "album",
-              "artist",
-              "playlist"
-            ],
-            "description": "Music content type: song, album, artist, or playlist. Auto-detect if not specified."
+            "description": "Name or title of the music content"
           },
           "source": {
             "type": "string",
@@ -108,7 +95,10 @@
             "description": "Playback mode: normal=sequential, random=shuffle, single=repeat single track, loop=repeat all."
           }
         },
-        "required": [],
+        "anyOf": [
+          { "required": ["title"] },
+          { "required": ["source"] }
+        ],
         "additionalProperties": false
       }
     },
@@ -123,7 +113,7 @@
             "description": "Set sleep timer duration, for example, stop playback after 15 minutes"
           }
         },
-        "required": [],
+        "required": ["auto_stop_time"],
         "additionalProperties": false
       }
     },
@@ -171,14 +161,6 @@
               "collection"
             ],
             "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "recent",
-              "favorites"
-            ],
-            "description": "Content source: recent=recently watched, favorites=favorite content. Only specify when user mentions recent or favorite content."
           }
         },
         "required": [

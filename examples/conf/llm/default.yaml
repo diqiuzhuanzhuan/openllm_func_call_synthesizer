@@ -43,6 +43,4 @@ function_call:
   # for openai
   #model_name: "gpt-4o"
   #backend: "openai"
-=======
-    require_all_responses: False  
->>>>>>> feat: update data
+
