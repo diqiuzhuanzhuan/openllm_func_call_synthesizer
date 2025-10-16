@@ -1,0 +1,77 @@
+# LLM Function Call Synthesizer Configuration File
+# 用于 llm_test_lora_stf_v5.py 的配置文件
+
+# ========== 系统配置 ==========
+# CUDA设备配置 (字符串格式，如 "0" 或 "0,1")
+cuda_device: "4,5"
+
+# ========== 模型配置 ==========
+# 模型名称 - 请根据您的实际模型路径修改
+model_name: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1015_mcp/stf/checkpoint-2000"
+
+# ========== 输入输出文件配置 ==========
+# llm推理文件 输入输出
+input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test.xlsx"
+output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test_response.xlsx"
+
+# 数据后处理输入输出。 输入为LLM推理输出，输出为增加GT/LLM各标准字段后的文件（作为评测输入）
+postprocess_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test_response.xlsx"
+postprocess_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test_response_with_gt_columns.xlsx"
+
+# 评测输入输出文件
+evaluate_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test_response_with_gt_columns.xlsx"
+evaluate_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/mcp_test_result_1015/only_test_response_evaluate.xlsx"
+
+# ========== 步骤执行控制 ==========
+# 控制执行哪些步骤 (true/false)
+steps:
+  inference: False                 # 是否执行LLM推理
+  postprocess: False               # 是否执行数据后处理（LLM+GT标准字段合成一步）
+  evaluate: true                  # 是否执行评测
+
+# ========== 数据字段配置 ==========
+# 输入数据中包含用户查询的字段名
+input_field: "input"
+
+# Ground Truth相关字段名
+ground_truth: "output"
+ground_truth_intent: "gt_intent"
+ground_truth_slot: "gt_slots"
+
+# LLM输出相关字段名
+llm_intent: "llm_intent"
+llm_slot: "llm_slots"
+
+# ========== 系统提示词配置 ==========
+system_prompt: >
+  You are an intent recognition and slot extraction assistant.
+  Your tasks are: 1. Identify the user's intent (intent); 2. Extract the corresponding slots (slots) from the user's input.
+  Please strictly follow the output requirements below: The output must always use JSON format: {"intent": "<intent_name>", "slots": {"<slot1>": "<value>", "<slot2>": "<value>"}}.
+  If a slot is not mentioned in the user's input, omit it. Do not output empty strings or null values.
+  If the intent cannot be recognized, output: {"intent": "unknown", "slots": {}}.
+  Intent and Slot Definitions: 1. create_album (Create a photo album) - Slots: album_name (the name of the album), album_type (the type of album, default: normal).
+  2. search_photos (Search for photos) - Slots: keywords (a description of the photo).
+  3. get_album_list (Retrieve albums) - Slots: album_type (normal/face/baby/condition/object).
+  4. music_play_control (Music playback) - Slots: title (song/album/artist/playlist name), source (recent/favorites), play_mode (normal/random/single/loop).
+  5. music_settings_control (Music player settings) - Slots: auto_stop_time (e.g., "30 minutes", "1 hour").
+  6. video_search_control (Search for videos) - Slots: title (video description), type (tv/movie/collection).
+  7. video_play_control (Play video content) - Slots: title (video description), type (tv/movie/collection).
+  8. get_system_info (Get system or device information) - Slots: system_type (system/device/storage/network/uglink).
+  Below is the user's request:
+
+# # ========== 评测配置 ==========
+# # 是否进行评测 (已被steps.evaluate替代，保留兼容性)
+# do_evaluate: true
+
+# ========== 高级配置 ==========
+# 生成参数配置（可选，代码中已有默认值）
+generation_config:
+  max_new_tokens: 5000
+  temperature: 0.01
+  top_p: 0.1
+
+# 日志配置
+logging:
+  level: "INFO"
+  save_logs: true
+  log_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/tests/llm_test.log"
