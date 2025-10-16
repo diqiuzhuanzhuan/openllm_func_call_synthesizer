@@ -7,7 +7,7 @@ import argparse
 import pandas as pd
 import ast
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from test_parse_function import parse_react_to_json
+from parse_response_to_json import parse_react_to_json
 
 def load_config(config_file):
     with open(config_file, 'r', encoding='utf-8') as f:
