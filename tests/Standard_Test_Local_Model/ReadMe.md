@@ -1,4 +1,5 @@
-本代码用于测评微调后的模型，从本地路径加载，用llm测评test data 效果
+本代码用于测评微调后的模型，在测试数据（test data）上的效果。  
+具体功能为从本地路径加载模型，请求模型得到response， 数据后处理， 并给出完成测评报告。   
 # 调用方法
 python Test_Loacal_Model.py --config ./config.yaml
 
