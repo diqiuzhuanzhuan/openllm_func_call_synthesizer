@@ -1,5 +1,5 @@
 # LLM Function Call Synthesizer Configuration File
-# 用于 llm_test_lora_stf_v5.py 的配置文件
+# 用于 Test_Loacal_Model.py 的配置文件
 
 # ========== 系统配置 ==========
 # CUDA设备配置 (字符串格式，如 "0" 或 "0,1")
@@ -34,13 +34,13 @@ steps:
 input_field: "input"
 
 # Ground Truth相关字段名
-ground_truth: "output"
-ground_truth_intent: "gt_intent"
-ground_truth_slot: "gt_slots"
+ground_truth: "output"    # 数据中 ground truth 列名
+ground_truth_intent: "gt_intent"    # 数据中 ground truth intent 列名， 这个如果没有 会从ground_truth来提取intent
+ground_truth_slot: "gt_slots"    # 数据中 ground truth slot 列名， 这个如果没有 会从ground_truth来提取slots
 
 # LLM输出相关字段名
-llm_intent: "llm_intent"
-llm_slot: "llm_slots"
+llm_intent: "llm_intent"    # 数据中 llm intent 列名， 这个如果没有 会从llm_response来提取intent, inference 结果 会保存到 llm_response列。
+llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会从llm_response来提取slots
 
 # ========== 系统提示词配置 ==========
 system_prompt: >
