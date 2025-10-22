@@ -1,197 +1,269 @@
 {
-  "tools": [
-    {
-      "name": "create_album",
-      "description": "Create a new photo album",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "album_name": {
-            "type": "string",
-            "description": "The name of the album to be created"
+    "tools": [
+      {
+        "name": "general_query",
+        "description": "Questions about general knowledge or topics not related to NAS",
+        "input_schema": {
+          "type": "object",
+          "properties": {
           },
-          "album_type": {
-            "type": "string",
-            "enum": [
-              "normal"
-            ],
-            "description": "The type of the album, default by normal"
-          }
-        },
-        "required": [
-          "album_name",
-          "album_type"
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "search_photos",
-      "description": "Search for photos or images",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "keyword": {
-            "type": "string",
-            "description": "The search keyword for photos or images. It can be descriptive text or a file name, e.g., 'photos taken last August' or 'dog on the grass'."
-          }
-        },
-        "required": [
-          "keyword"
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "get_album_list",
-      "description": "Retrieve the list of photo albums, including regular albums, people albums, baby albums, conditional albums, and object recognition albums.",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "album_type": {
-            "type": "string",
-            "enum": [
-              "normal",
-              "face",
-              "baby",
-              "condition",
-              "object"  
-            ],
-            "description": "The type of album to retrieve. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album), object (object recognition album, 识物相册)."
-          }
-        },
-        "required": [
-          "album_type"
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "music_play_control",
-      "description": "Music control tool: play songs, albums, artists, playlists, and other music content. Supports playback modes, and retrieving content from recent history or favorites.",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "Name or title of the music content"
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "summary_document",
+        "description": "Summarize the content of a document or report",
+        "input_schema": {
+          "type": "object",
+          "properties": {
           },
-          "source": {
-            "type": "string",
-            "enum": [
-              "recent",
-              "favorites"
-            ],
-            "description": "Content source: recent=recently played, favorites=liked songs. Only specify when user explicitly mentions recent or favorite content."
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "search_document",
+        "description": "Locate specific documents or files based on keywords. Often includes terms like \"document\", \"file\", or \"report\"\n",
+        "input_schema": {
+          "type": "object",
+          "properties": {
           },
-          "play_mode": {
-            "type": "string",
-            "enum": [
-              "normal",
-              "random",
-              "single",
-              "loop"
-            ],
-            "description": "Playback mode: normal=sequential, random=shuffle, single=repeat single track, loop=repeat all."
-          }
-        },
-        "anyOf": [
-          { "required": ["title"] },
-          { "required": ["source"] }
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "music_settings_control",
-      "description": "Control music app settings",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "auto_stop_time": {
-            "type": "number",
-            "description": "Set sleep timer duration, for example, stop playback after 15 minutes"
-          }
-        },
-        "required": ["auto_stop_time"],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "video_search_control",
-      "description": "Video search tool: search TV series, movies, and other video content. ",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "Name or title of the video content, supports fuzzy matching."
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "translate",
+        "description": "Translate text or documents into a specified language.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
           },
-          "type": {
-            "type": "string",
-            "enum": [
-              "tv",
-              "movie",
-              "collection"
-            ],
-            "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
-          }
-        },
-        "required": [
-          "title"
-        ],
-        "additionalProperties": false
-      }
-    },
-    {
-      "name": "video_play_control",
-      "description": "Video play tool: play TV series, movies, and other video content. Supports retrieving content from recently watched history and favorites.",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "Name or title of the video content, supports fuzzy matching."
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "create_album",
+        "description": "Create a new photo album, optionally based on search results from photo library.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "album_name": {
+              "type": "string",
+              "description": "The name of the album to be created"
+            },
+            "album_type": {
+              "type": "string",
+              "enum": [
+                "normal"
+              ],
+              "description": "The type of the album, default by normal"
+            },
+            "search_query": {
+              "type": "string",
+              "description": "Optional. Search keyword or filter to find photos (e.g., 'beach', 'family', '2024 vacation'). The album will include the photos matching this query."
+            }
           },
-          "type": {
-            "type": "string",
-            "enum": [
-              "tv",
-              "movie",
-              "collection"
-            ],
-            "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
-          }
-        },
-        "required": [
-          "title"
-        ],
-        "additionalProperties": false
+          "required": [
+            "album_name",
+            "album_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "search_photos",
+        "description": "Search for photos or images",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "description": "The search keyword for photos or images. It can be descriptive text or a file name, e.g., 'photos taken last August' or 'dog on the grass'."
+            }
+          },
+          "required": [
+            "keyword"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "get_album_list",
+        "description": "Retrieve the list of photo albums, including regular albums, people albums, baby albums, conditional albums, and object recognition albums.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "album_type": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "face",
+                "baby",
+                "condition",
+                "object"
+              ],
+              "description": "The type of album to retrieve. Options: normal (regular album), face (people album), baby (baby album), condition (conditional album), object (object recognition album, 识物相册)."
+            }
+          },
+          "required": [
+            "album_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "music_play_control",
+        "description": "Music control tool: play songs, albums, artists, playlists, and other music content. Supports playback modes, and retrieving content from recent history or favorites.\n    Note: Either 'title' or 'source' must be provided.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Name or title of the music content"
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "recent",
+                "favorites"
+              ],
+              "description": "Content source: recent=recently played, favorites=liked songs. Only specify when user explicitly mentions recent or favorite content."
+            },
+            "play_mode": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "random",
+                "single",
+                "loop"
+              ],
+              "description": "Playback mode: normal=sequential, random=shuffle, single=repeat single track, loop=repeat all."
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "title"
+              ]
+            },
+            {
+              "required": [
+                "source"
+              ]
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "music_search_control",
+        "description": "Music search tool: search for songs, albums, artists, or playlists based on keywords.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "description": "Search keyword, such as song name, artist name, or album title."
+            }
+          },
+          "required": [
+            "keyword"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "music_settings_control",
+        "description": "Control music app settings",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "auto_stop_time": {
+              "type": "number",
+              "description": "Set sleep timer duration, for example, stop playback after 15 minutes"
+            }
+          },
+          "required": [
+            "auto_stop_time"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "video_search_control",
+        "description": "Video search tool: search TV series, movies, and other video content. ",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Name or title of the video content, supports fuzzy matching."
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "tv",
+                "movie",
+                "collection"
+              ],
+              "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "video_play_control",
+        "description": "Video play tool: play TV series, movies, and other video content. Supports retrieving content from recently watched history and favorites.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Name or title of the video content, supports fuzzy matching."
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "tv",
+                "movie",
+                "collection"
+              ],
+              "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "get_system_info",
+        "description": "Retrieves detailed information about the device, including operating system details, hardware specifications, storage status, network configuration, and UGREEN Link account information.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "system_type": {
+              "type": "string",
+              "description": "The category of system information to retrieve: 'system' for OS and system info, 'device' for device-specific details, 'hardware' for CPU and memory specs, 'storage' for disk and storage status, 'network' for network configuration, 'uglink' for UGREEN Link account information.",
+              "enum": [
+                "system",
+                "device",
+                "hardware",
+                "storage",
+                "network",
+                "uglink"
+              ]
+            }
+          },
+          "required": [
+            "system_type"
+          ],
+          "additionalProperties": false
+        }
       }
-    },
-    {
-      "name": "get_system_info",
-      "description": "Retrieve detailed information about the device, operating system, storage, network status, warranty, or UGREEN Link account.",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "system_type": {
-            "type": "string",
-            "description": "The category of information to query. Options: system=system info, device=device info, storage=storage info, network=network info, uglink=UGREEN Link related info.",
-            "enum": [
-              "system",
-              "device",
-              "storage",
-              "network",
-              "uglink"
-            ]
-          }
-        },
-        "required": [
-          "system_type"
-        ],
-        "additionalProperties": false
-      }
-    }
-  ]
+    ]
 }
