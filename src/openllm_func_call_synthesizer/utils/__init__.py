@@ -25,6 +25,8 @@ from .utils import (
     extract_format,
     convert_to_mcp_tools,
     pick_unique,
+    convert_to_openai_tools,
+    ToolMetadata,
 )
 
 __ALL__ = [
@@ -32,4 +34,6 @@ __ALL__ = [
     "extract_format",
     "convert_to_mcp_tools",
     "pick_unique",
+    "convert_to_openai_tools",
+    "ToolMetadata",
 ]

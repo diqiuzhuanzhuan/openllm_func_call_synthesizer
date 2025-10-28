@@ -28,14 +28,12 @@ function_call:
   # backend_params:
   #   base_url: "http://192.168.111.3:11434"
   #   require_all_responses: False
-  # prompt_type: "react"
 
   # # for openai
   # model_name: "gpt-4o"
   # backend: "openai"
   # backend_params:
   #   require_all_responses: False
-  # prompt_type: "react"  
 
   # model_name: "claude-sonnet-4-20250514"
   # backend: "openai"
@@ -43,9 +41,12 @@ function_call:
   #   require_all_responses: False
   # prompt_type: "react"
 
-  model_name: "gemini-2.5-flash-lite"
+  # model_name: "gemini-2.5-flash-lite"
+  # backend: "openai"
+  # backend_params:
+  #  require_all_responses: False
+
+  model_name: "gpt-4.1"
   backend: "openai"
   backend_params:
-    require_all_responses: False
-  prompt_type: "react"
-  
+    require_all_responses: False  

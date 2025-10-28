@@ -16,10 +16,13 @@ query_generation:
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
 
+mcp_servers:
+  "ugreen_mcp":
+    transport: "http://localhost:10000/mcp"
 
 function_call_generation:
   function_dataset: "data/ugreen_function/"
-  max_num: -1 # max number of function calls to generate, -1 means all
+  max_num: 20 # max number of function calls to generate, -1 means all
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
   #name: "data/ugreen_function_call"

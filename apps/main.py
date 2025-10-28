@@ -23,20 +23,37 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from rich import pretty
+import asyncio
 from openllm_func_call_synthesizer.core.synthesizer import QueryGenerator, FunctionCallGenerator
 from datasets import Dataset, concatenate_datasets
-from openllm_func_call_synthesizer.utils import pick_unique
+from openllm_func_call_synthesizer.utils import (
+    pick_unique,
+    convert_to_openai_tools
+)
+
 import json
 from pathlib import Path
+from fastmcp import Client
+from typing import List, Dict
 
 
-def generate_query_dataset(cfg: DictConfig):
+async def get_mcp_tools(cfg: DictConfig) -> List[Dict]:
+    """Get tools from MCP server."""
+    mcp_cfg = cfg.synthesizer.mcp_servers["ugreen_mcp"]
+    client = Client(**mcp_cfg)
+    async with client:
+        tools = await client.list_tools()
+    return tools
+
+
+def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     data_file = cfg.synthesizer.query_generation.function_docs
     if not Path(data_file).exists():
         raise FileNotFoundError(f"File {data_file} not found")
     with open(data_file, "r") as f:
         data = json.load(f)
-    data = [{'function': json.dumps(e, ensure_ascii=False, indent=2)} for e in data['tools']]
+    data = [{'function': json.dumps(e, ensure_ascii=False, indent=2)} for e in function_docs['tools']]
+    pretty.pprint(data)
     # Loop over configured languages to generate multilingual query variations
     languages = cfg.synthesizer.query_generation.get('languages', ['English'])
     output_datasets = []
@@ -77,7 +94,7 @@ def generate_query_dataset(cfg: DictConfig):
     from datasets import load_dataset
     load_dataset("json", data_files={"train": str(out_dir/"train.jsonl")})
 
-def generate_function_call_dataset(cfg: DictConfig):
+def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     # Load the function dataset
     function_dataset_path = Path(cfg.synthesizer.function_call_generation.function_dataset)
     if not Path(function_dataset_path).exists():
@@ -96,7 +113,8 @@ def generate_function_call_dataset(cfg: DictConfig):
     functions = sampled['function']
     fc_kwargs = OmegaConf.to_container(cfg.llm.function_call, resolve=True)
     function_call_generator = FunctionCallGenerator(
-        **fc_kwargs
+        **fc_kwargs,
+        generation_params={"tools":function_docs['tools']},
     )
     max_num = cfg.synthesizer.function_call_generation.max_num
     if max_num > 0:
@@ -118,15 +136,21 @@ def generate_function_call_dataset(cfg: DictConfig):
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
+    pretty.pprint("loading config:")
     pretty.pprint(cfg)
+    print("loading tools from MCP server:")
+    loop = asyncio.get_event_loop()
+    mcp_tools = loop.run_until_complete(get_mcp_tools(cfg=cfg))
+    openai_format_tools = convert_to_openai_tools(mcp_tools)
+    pretty.pprint(openai_format_tools)
     llm_cfg = cfg.llm
     synth_cfg = cfg.synthesizer
     print("llm_config: ")
     pretty.pprint(llm_cfg)
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    generate_query_dataset(cfg)
-    # generate_function_call_dataset(cfg)
+    generate_query_dataset(cfg, function_docs=openai_format_tools)
+    generate_function_call_dataset(cfg, function_docs=openai_format_tools)
 
 if __name__ == "__main__":
     main()
