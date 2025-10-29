@@ -132,8 +132,6 @@ def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     fcg.dataset.to_parquet(str(output_dir / "output.parquet"))
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
-
-
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     pretty.pprint("loading config:")

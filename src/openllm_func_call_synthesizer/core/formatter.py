@@ -1,0 +1,11 @@
+from pathlib import Path
+
+with (
+    Path(__file__).parents[0] / Path("templates") / Path("critic_system_header.md")
+).open("r") as f:
+    __BASE_CRITIC_SYSTEM_HEADER = f.read()
+
+CRITIC_SYSTEM_HEADER = __BASE_CRITIC_SYSTEM_HEADER.replace(
+    "{context_prompt}", "", 1
+)
+
