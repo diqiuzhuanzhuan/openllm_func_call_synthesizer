@@ -20,7 +20,10 @@ from bespokelabs import curator
 from openllm_func_call_synthesizer.utils import extract_format
 from bespokelabs.curator.log import add_file_handler, logger
 from rich import pretty
-from openllm_func_call_synthesizer.core.formatter import CRITIC_SYSTEM_HEADER
+from openllm_func_call_synthesizer.core.formatter import (
+    CRITIC_SYSTEM_HEADER,
+    CRITIC_FUNCTION_CALL_SYSTEM_HEADER,
+)
 
 
 
@@ -71,19 +74,53 @@ class Critic(curator.LLM):
     """A simple critic for any tasks."""
 
     return_completions_object = True
+    
+    def __init__(
+        self, 
+        model_name, 
+        response_format = None, 
+        batch = False, 
+        backend = None, 
+        generation_params = None, 
+        backend_params = None, 
+        system_prompt = None,
+        query_field = "query",
+        task_prompt_field = "task_prompt",
+        label_field = "label",    
+        functions_field = "functions",
+        response_field = "response",
+        ):
+        super().__init__(model_name, response_format, batch, backend, generation_params, backend_params, system_prompt)
+        self.query_field = query_field
+        self.task_prompt_field = task_prompt_field
+        self.label_field = label_field
+        self.functions_field = functions_field
+        self.response_field = response_field
 
 
     def prompt(self, input: Dict) -> Dict:
         """The prompt is used to generate the function call."""
         # Prepare a readable listing of available functions
-        system_prompt = input.get("system_prompt", CRITIC_SYSTEM_HEADER)
-        task_prompt = input.get("task_prompt", "")
-        query = input.get("query", "")
-        label = input.get("label", "")
+        system_prompt = input.get("system_prompt", CRITIC_FUNCTION_CALL_SYSTEM_HEADER)
+        task_prompt = input.get(self.task_prompt_field, "")
+        if not task_prompt:
+            raise ValueError("task_prompt is required")
+        query = input.get(self.query_field, "")
+        if not query:
+            raise ValueError("query is required")
+        functions = input.get(self.functions_field, "")
+        if not functions:
+            raise ValueError("functions is required")
+        label = input.get(self.label_field, "")
+        answer = input.get(self.response_field, "")
+        if not label and not answer:
+            raise ValueError("either label or answer is required")
+        model_output = label if label else answer['content']
+
         user_prompt = f"""
         The given instruction is {task_prompt}.
-        The user's input is: {query}
-        The model output is :{label}
+        The available functions are: {functions}
+        The model output is :{model_output}
         """
         return [
             {'role': 'system', 'content': system_prompt},

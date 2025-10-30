@@ -48,13 +48,28 @@ class FunctionCallGenerator(curator.LLM):
         The user request is:
         {input['query']}
         """
+    
+    def _parse_function_call(self, raw_output: Dict) -> Dict:  
+        parsed = []
+        for call in raw_output:
+            func = call.get("function", {})
+            name = func.get("name")
+            try:
+                args = json.loads(func.get("arguments", "{}"))
+            except json.JSONDecodeError:
+                args = func.get("arguments", {})  # fallback
+            parsed.append({
+                "name": name,
+                "arguments": args
+            })
 
+        return json.dumps(parsed, ensure_ascii=False, indent=2)
 
     def parse(self, input: Dict, response) -> Dict:
         """Parse the response to extract the function call or the message."""
         input['prompt'] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
-            input["function_call"] = json.dumps([tool_call["function"] for tool_call in response["choices"][0]["message"]["tool_calls"]])
+            input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
             input['answer'] = response["choices"][0]["message"]
 
         else:
@@ -68,11 +83,13 @@ class FunctionCallGenerator(curator.LLM):
                 input['function_call'] = json.dumps(function_call, ensure_ascii=False)
                 input['answer'] = response["choices"][0]["message"]
 
-
+        pretty.pprint("query: ")
         pretty.pprint(input['query'])
         if "answer" in input:
+            pretty.pprint("answer: ")
             pretty.pprint(input['answer'])
         if "function_call" in input:
+            pretty.pprint("function_call: ")
             pretty.pprint(input['function_call'])
 
         return input

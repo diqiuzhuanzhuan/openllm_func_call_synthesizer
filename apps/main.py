@@ -24,13 +24,18 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from rich import pretty
 import asyncio
-from openllm_func_call_synthesizer.core.synthesizer import QueryGenerator, FunctionCallGenerator
+from openllm_func_call_synthesizer.core.synthesizer import (
+    QueryGenerator, 
+    FunctionCallGenerator,
+)
+from openllm_func_call_synthesizer.core.critic import Critic
 from datasets import Dataset, concatenate_datasets
 from openllm_func_call_synthesizer.utils import (
     pick_unique,
     convert_to_openai_tools
 )
 
+from datasets import load_dataset
 import json
 from pathlib import Path
 from fastmcp import Client
@@ -58,9 +63,9 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     languages = cfg.synthesizer.query_generation.get('languages', ['English'])
     output_datasets = []
     for language in languages:
-        for name in cfg.llm.providers:
+        for name in cfg.synthesizer.query_generation.providers:
             print(f"provider: {name}, language: {language}")
-            provider = cfg.llm.providers[name]
+            provider = cfg.synthesizer.query_generation.providers[name]
             for model in provider.models:
                 print(f"model: {model}")
                 # Instantiate generator with language
@@ -91,15 +96,14 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     combined.to_parquet(str(out_dir / "output.parquet"))
     print(f"Dataset saved to {out_dir} in train.jsonl, csv, parquet formats.")
     # You can load the JSONL with:
-    from datasets import load_dataset
     load_dataset("json", data_files={"train": str(out_dir/"train.jsonl")})
 
 def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     # Load the function dataset
-    function_dataset_path = Path(cfg.synthesizer.function_call_generation.function_dataset)
+    function_call_cfg = cfg.synthesizer.function_call_generation
+    function_dataset_path = Path(function_call_cfg.function_dataset)
     if not Path(function_dataset_path).exists():
         raise FileNotFoundError(f"File {function_dataset_path} not found")
-    from datasets import load_dataset
     dataset = load_dataset("json", data_files={"train": str(function_dataset_path/"train.jsonl")})
     hashes = dataset['train'].unique('function_hash')
     print(f"Found {len(hashes)} unique functions")
@@ -111,7 +115,7 @@ def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     #sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
     print(f"sampled {len(sampled)} functions: {sampled}")
     functions = sampled['function']
-    fc_kwargs = OmegaConf.to_container(cfg.llm.function_call, resolve=True)
+    fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
     function_call_generator = FunctionCallGenerator(
         **fc_kwargs,
         generation_params={"tools":function_docs['tools']},
@@ -132,6 +136,34 @@ def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     fcg.dataset.to_parquet(str(output_dir / "output.parquet"))
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
+    
+def critic_function_call_dataset(cfg: DictConfig):
+    critic_cfg = cfg.synthesizer.critic
+    function_call_dataset_path = Path(critic_cfg.function_call_dataset)
+    if not function_call_dataset_path.exists():
+        raise FileNotFoundError(f"File {function_call_dataset_path} not found")
+    dataset = load_dataset("json", data_files={"train": str(function_call_dataset_path/"train.jsonl")})
+    cg_args = OmegaConf.to_container(cfg.synthesizer.critic.provider, resolve=True)
+    cg_args['query_field'] = critic_cfg.query_field
+    cg_args['task_prompt_field'] = critic_cfg.task_prompt_field
+    cg_args['label_field'] = critic_cfg.label_field
+    cg_args['functions_field'] = critic_cfg.functions_field
+    cg_args['response_field'] = critic_cfg.response_field
+    critic_generate = Critic(**cg_args)
+    max_num = cfg.synthesizer.function_call_generation.max_num
+    if max_num > 0:
+        dataset = dataset["train"].select(range(max_num))
+    else:
+        dataset = dataset["train"]
+    cg = critic_generate(dataset=dataset)  
+    output_dir = Path(cfg.synthesizer.critic.output_dir)/cfg.synthesizer.critic.name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cg.dataset.to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
+    cg.dataset.to_csv(str(output_dir / "output.csv"))
+    cg.dataset.to_parquet(str(output_dir / "output.parquet"))
+    print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
+
+
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     pretty.pprint("loading config:")
@@ -141,14 +173,12 @@ def main(cfg: DictConfig):
     mcp_tools = loop.run_until_complete(get_mcp_tools(cfg=cfg))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
     pretty.pprint(openai_format_tools)
-    llm_cfg = cfg.llm
     synth_cfg = cfg.synthesizer
-    print("llm_config: ")
-    pretty.pprint(llm_cfg)
     print("synth_config: ")
     pretty.pprint(synth_cfg)
     generate_query_dataset(cfg, function_docs=openai_format_tools)
     generate_function_call_dataset(cfg, function_docs=openai_format_tools)
+    critic_function_call_dataset(cfg)
 
 if __name__ == "__main__":
     main()

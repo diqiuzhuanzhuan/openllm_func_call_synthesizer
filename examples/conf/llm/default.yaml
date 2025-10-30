@@ -50,3 +50,9 @@ function_call:
   backend: "openai"
   backend_params:
     require_all_responses: False  
+
+critic:
+  model_name: "gpt-4o-mini"
+  backend: "openai"
+  backend_params:
+    require_all_responses: False

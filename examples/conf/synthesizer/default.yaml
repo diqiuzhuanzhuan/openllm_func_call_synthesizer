@@ -1,6 +1,10 @@
 # settings controlling the synthesizer behaviour
 name: "default_synthesizer"
 
+mcp_servers:
+  "ugreen_mcp":
+    transport: "http://localhost:10000/mcp"
+
 query_generation:
   function_docs: examples/function_docs.json
 
@@ -16,15 +20,54 @@ query_generation:
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
 
-mcp_servers:
-  "ugreen_mcp":
-    transport: "http://localhost:10000/mcp"
+  providers:
+    openai:
+      backend: "openai"
+      models:
+        - "gpt-4o"
+        - "gpt-4o-mini"
+        - "gpt-3.5-turbo"
+
+    anthropic:
+      backend: "openai"
+      models:
+        - "claude-sonnet-4-20250514"
+        - "claude-3-5-sonnet-20241022"
+
+    google:
+      backend: "openai"
+      models:
+        - "gemini-2.5-flash-lite"
+
+
 
 function_call_generation:
   function_dataset: "data/ugreen_function/"
   max_num: 20 # max number of function calls to generate, -1 means all
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", "parquet"
-  #name: "data/ugreen_function_call"
   #name: "data/ollama_ugreen_function_call"
-  name: "data/claude_ugreen_function_call"
+  name: "claude_ugreen_function_call"
+  provider:
+    model_name: "gpt-4o"
+    backend: "openai"
+    backend_params:
+      require_all_responses: False  
+
+
+critic:
+  function_call_dataset: "data/claude_ugreen_function_call/"
+  output_dir: "data"
+  # cirtic need 'query', 'label', 'task_prompt'
+  query_field: "query"
+  task_prompt_field: "prompt"
+  label_field: "function_call"
+  functions_field: "functions"
+  response_field: "answer"
+  output_format: "jsonl"   # or "json", "csv", xlsx, "parquet"
+  name: "data/claude_ugreen_function_call_critic"
+  provider:
+    model_name: "gpt-4.1"
+    backend: "openai"
+    backend_params:
+      require_all_responses: False  
