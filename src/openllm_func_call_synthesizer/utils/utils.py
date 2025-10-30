@@ -253,6 +253,3 @@ if __name__ == "__main__":
     print(json.dumps(mcp_tools, indent=2, ensure_ascii=False))
     with open("function_docs.json", "w") as f:
         json.dump(mcp_tools, f, indent=2, ensure_ascii=False)
-
-    openai_functions = convert_to_openai_functions(mcp_tools)
-    print(json.dumps(openai_functions, indent=2, ensure_ascii=False))
