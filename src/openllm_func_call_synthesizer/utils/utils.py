@@ -24,6 +24,7 @@ from typing import List, Dict, Any
 from pathlib import Path
 from typing import Any
 import yaml
+import os
     
 def convert_to_mcp_tools(function_docs: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     tools = []
@@ -67,6 +68,55 @@ def read_yaml(path: Path) -> dict[str, Any]:
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
+def read_json_file(file_path):
+    """
+    读取 JSON 文件
+    :param file_path: JSON 文件路径
+    :return: 解析后的字典/列表数据
+    """
+    try:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"文件 {file_path} 不存在")
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        print("JSON 文件读取成功")
+        return data
+    except json.JSONDecodeError as e:
+        print(f"JSON 文件格式错误: {e}")
+    except Exception as e:
+        print(f"读取 JSON 文件时出错: {e}")
+
+def format_value_counts(df, key_column):
+    # 计算计数和占比
+    counts = df[key_column].value_counts()
+    proportions = df[key_column].value_counts(normalize=True)
+
+    # 合并为 DataFrame
+    result = pd.DataFrame({
+        'count': counts,
+        'proportion': proportions,
+    }).reset_index()
+
+    # 重命名列
+    result.columns = [key_column, 'count', 'proportion']
+
+    # 可选：保留两位小数
+    result['proportion'] = result['proportion'].apply(lambda x: f"{x * 100:.2f}%")
+
+    total_count = result['count'].sum()
+
+    # 添加总计行
+    total_row = pd.DataFrame({
+        key_column: ['Total'],
+        'count': [total_count],
+        'proportion': ['100%']
+    })
+
+    # 合并结果
+    result = pd.concat([result, total_row], ignore_index=True)
+
+    # print(result)
+    return result     
 
 from typing import Union, List, Dict
 import pandas as pd
@@ -107,6 +157,32 @@ def pick_unique(dataset: Union[List[Dict], pd.DataFrame, Dataset], field: str, k
     else:
         raise TypeError("Unsupported dataset type: must be list[dict], pandas.DataFrame, or HuggingFace Dataset.")
     
+# 语言检测 detect_language   标注 中英日德
+import re
+def detect_language(input_text):
+    if isinstance(input_text, str):
+        s = input_text.strip()
+        # German check: e.g., contains ü, ö, ä, ß or typical German words
+        if re.search(r'[üöäß]|[ÄÖÜ]', s) or re.search(r'\b(der|die|das|und|ein|nicht|ist|zu|in|den|mit|auf|für|sie|es|dem|von)\b', s, re.I):
+            return 'ger'
+        # Japanese check: hiragana, katakana, or frequent Japanese-specific patterns
+        # Only classify as Japanese if contains **hiragana or katakana** (NOT CJK, which includes Chinese)
+        if re.search(r'[\u3040-\u309F\u30A0-\u30FF]', s):
+            return 'jap'
+        # English check: contains [a-zA-Z] and high ASCII ratio, avoid misclassifying numbers/symbols
+        if re.search(r'[a-zA-Z]', s):
+            ascii_ratio = sum(1 for c in s if ord(c) < 128) / max(1, len(s))
+            if ascii_ratio > 0.7:
+                return 'en'
+    # Default: assume Chinese if not above
+    return 'zh'
+    
+# 填补language列为空的行
+def complete_language_column(row):
+    if isinstance(row['language'], str) and row['language'].strip():
+        return row['language']
+    else:
+        return detect_language(row['input'])
 
 if __name__ == "__main__":
     data = extract_format(content='```json\n{"a": 1}\n```')
