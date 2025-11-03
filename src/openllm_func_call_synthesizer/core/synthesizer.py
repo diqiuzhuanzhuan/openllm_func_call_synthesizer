@@ -27,7 +27,7 @@ from datasets import Dataset
 from bespokelabs import curator
 from openllm_func_call_synthesizer.utils import extract_format
 from bespokelabs.curator.log import add_file_handler, logger
-
+from rich import pretty
 
 
 class FunctionCallGenerator(curator.LLM):
@@ -41,47 +41,56 @@ class FunctionCallGenerator(curator.LLM):
         return "\n\n".join(funcs)
 
     def prompt(self, input: Dict) -> str:
-            """The prompt is used to generate the function call."""
-            # Prepare a readable listing of available functions
-            functions_block = self._format_functions(input.get('functions', []))
-            return f"""
-            You are an expert in structured function calling.
+        """The prompt is used to generate the function call."""
+        # Prepare a readable listing of available functions
+        return f"""
+        You are an expert in structured function calling.
+        The user request is:
+        {input['query']}
+        """
+    
+    def _parse_function_call(self, raw_output: Dict) -> Dict:  
+        parsed = []
+        for call in raw_output:
+            func = call.get("function", {})
+            name = func.get("name")
+            try:
+                args = json.loads(func.get("arguments", "{}"))
+            except json.JSONDecodeError:
+                args = func.get("arguments", {})  # fallback
+            parsed.append({
+                "name": name,
+                "arguments": args
+            })
 
-            The user request is:
-            {input['query']}
-
-            You have access to the following functions:
-            {functions_block}
-
-            Your task:
-            - Choose the most appropriate function to fulfill the request.
-            - Include all required parameters; use placeholders if not specified.
-            - Return ONLY a JSON object with `name` and `arguments`.
-            - If no function applies, return an empty JSON object: {{}}
-
-            Desired format:
-            {{
-                "name": "<function_name>",
-                "arguments": {{
-                    "param1": "value1",
-                    "param2": "value2"
-                }}
-            }}
-            """
-
+        return json.dumps(parsed, ensure_ascii=False, indent=2)
 
     def parse(self, input: Dict, response) -> Dict:
         """Parse the response to extract the function call or the message."""
         input['prompt'] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
-            input["function_call"] = str([tool_call["function"] for tool_call in response["choices"][0]["message"]["tool_calls"]])
+            input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
+            input['answer'] = response["choices"][0]["message"]
+
         else:
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             if function_call is None:
-                raise ValueError("The model did not return a valid function call.")
+                input['answer'] = response["choices"][0]["message"]
+                input['function_call'] = None
+                #raise ValueError("The model did not return a valid function call.")
             else:
-                input['function_call'] = json.dumps(function_call)
+                input['function_call'] = json.dumps(function_call, ensure_ascii=False)
+                input['answer'] = response["choices"][0]["message"]
+
+        pretty.pprint("query: ")
+        pretty.pprint(input['query'])
+        if "answer" in input:
+            pretty.pprint("answer: ")
+            pretty.pprint(input['answer'])
+        if "function_call" in input:
+            pretty.pprint("function_call: ")
+            pretty.pprint(input['function_call'])
 
         return input
 
@@ -101,9 +110,10 @@ class QueryGenerator(curator.LLM):
 
     return_completions_object = True
     
-    def __init__(self, model_name: str = None, backend: str = None, language: str = "English"):
+    def __init__(self, model_name: str = None, backend: str = None, language: str = "English", backend_params: Dict = {}):
         """Initialize with optional language for generation."""
-        super().__init__(model_name=model_name, backend=backend, backend_params={"require_all_responses": False})
+        backend_params.update({"require_all_responses": False})
+        super().__init__(model_name=model_name, backend=backend, backend_params=backend_params)
         self.language = language
 
     def _hash_fingerprint(self, dataset_hash: str = "", disable_cache: bool = False):
@@ -115,6 +125,7 @@ class QueryGenerator(curator.LLM):
 
     def prompt(self, input: Dict) -> str:
         """The prompt is used to generate the query."""
+        print(input)
         return f"""You are a query expansion system generating queries in {self.language}.
         Your task is to generate diverse natural language user queries that would reliably trigger the same function.
 

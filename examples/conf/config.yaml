@@ -2,3 +2,4 @@
 defaults:
   - llm: default
   - synthesizer: default
+  - critic: default
