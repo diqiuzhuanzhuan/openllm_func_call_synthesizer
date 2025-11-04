@@ -22,14 +22,12 @@ use_api: false
 
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "0,1,2,3,4,5"
+cuda_device: "0,1,2,7"
+num_processes: 4
 
 # 本地模型路径
-# model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1025_intent_mcp/stf/checkpoint-1900"
-# model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1025_intent_mcp/stf/checkpoint-500"
-# model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1028_intent_mcp/sft/checkpoint-90"
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
-model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1031_intent_mcp/sft/checkpoint-300"
+model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1103_intent_mcp/sft/checkpoint-300"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
@@ -43,23 +41,47 @@ model_name: "mcp_intent_1016:q4_k_m"
 temperature: 0.01
 
 # 通过指定 root 目录来简化路径
-root: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_data_1031"
+root: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_data_1103/mcp_data_1103_for_train"
 
-# 选择使用哪个系统提示词
-prompt_key: "mcp"  #uliya
+# 选择使用哪个系统提示词（仅用于向后兼容）
+prompt_key: "uliya"  # uliya or mcp
+
+# ========== 新增：混合/分割模式配置 ==========
+# mode: 选择运行模式
+#   - "hybrid": 混合模式，先用 mcp_input 请求，如果没有结果再用 uliya_input
+#   - "split": 分割模式，根据 gt_intent 是否在 mcp_intent_list/uliya_intent_list 中选择对应 prompt
+mode: "hybrid"  # hybrid or split
+
+# split 模式需要的配置：定义哪些 intent 使用哪个 prompt
+mcp_intent_list:
+  - "create_album"
+  - "search_photos"
+  - "get_album_list"
+  - "music_play_control"
+  - "music_search_control"
+  - "music_settings_control"
+  - "video_search_control"
+  - "video_play_control"
+  - "get_system_info"
+
+uliya_intent_list:
+  - "general_query"
+  - "summary_document"
+  - "search_document"
+  - "translate"
 
 # ========== 输入输出文件配置 ==========
 # 支持 ${root} 变量，代码要先解析
-input_file: "${root}/test_all_mcp.xlsx"
-output_file: "${root}/test_all_mcp_output.xlsx"
+input_file: "${root}/test_all.xlsx"
+output_file: "${root}/test_all_output_hybrid.xlsx"
 
 # 数据后处理输入输出
-postprocess_input_file: "${root}/test_all_mcp_output.xlsx"
-postprocess_output_file: "${root}/test_all_mcp_processed.xlsx"
+postprocess_input_file: "${root}/test_all_output_hybrid.xlsx"
+postprocess_output_file: "${root}/test_all_processed_hybrid.xlsx"
 
 # 评测输入输出文件
-evaluate_input_file: "${root}/test_all_mcp_processed.xlsx"
-evaluate_output_file: "${root}/test_all_mcp_evaluate.xlsx"
+evaluate_input_file: "${root}/test_all_processed_hybrid.xlsx"
+evaluate_output_file: "${root}/test_all_evaluate_hybrid.xlsx"
 
 # #evaluate_output_str 输入输出文件
 # evaluate_output_str_input_file: "${root}/test_mcp_1017_with_gt_v3.xlsx"
@@ -72,6 +94,13 @@ steps:
   postprocess: true             # 是否执行数据后处理（LLM+GT标准字段合成一步）
   evaluate: true                  # 是否执行评测
   evaluate_output_str: false
+
+# ========== 评测模式配置 ==========
+# evaluate_separate: 是否分开评测 MCP 和 Uliya 数据
+#   - false (默认): 合并评测所有数据
+#   - true: 根据 gt_intent 是否在 mcp_intent_list/uliya_intent_list 中分开评测
+evaluate_separate: true  # 设为 true 则分开评测
+
 # ========== 数据字段配置 ==========
 # 输入数据中包含用户查询的字段名
 input_field: "input"

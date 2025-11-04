@@ -11,89 +11,9 @@ from llm_local_caller import batch_llm_predict
 from llm_api_caller import batch_llm_predict_api
 
 def load_config(config_file):
-    """
-    加载YAML配置文件
-    如果配置了prompt_file和prompt_key，会从JSON文件读取system_prompt
-    支持 ${root} 等变量替换
-    """
-    import os
+    """加载YAML配置文件"""
     with open(config_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
-    
-    # 第一步：处理变量替换（如 ${root}）
-    def replace_variables(config_dict):
-        """递归替换配置中的变量"""
-        if not isinstance(config_dict, dict):
-            return config_dict
-        
-        # 先收集所有可用的变量（root等）
-        variables = {}
-        for key, value in config_dict.items():
-            if isinstance(value, str) and not value.startswith('${'):
-                variables[key] = value
-        
-        # 递归替换
-        for key, value in config_dict.items():
-            if isinstance(value, str):
-                # 替换形如 ${variable_name} 的占位符
-                for var_name, var_value in variables.items():
-                    placeholder = f"${{{var_name}}}"
-                    if placeholder in value:
-                        value = value.replace(placeholder, var_value)
-                config_dict[key] = value
-            elif isinstance(value, dict):
-                config_dict[key] = replace_variables(value)
-        
-        return config_dict
-    
-    config = replace_variables(config)
-    
-    # 读取 prompt 文件
-    # 方式1: 根据 prompt_key 选择对应的 txt 文件（推荐）
-    if 'prompt_key' in config:
-        prompt_key = config['prompt_key']
-        prompt_file_key = f'system_prompt_{prompt_key}_file'
-        print('---prompt_file_key---', prompt_file_key)
-        
-        if prompt_file_key in config:
-            prompt_file_path = config[prompt_file_key]
-            try:
-                with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                    config['system_prompt'] = f.read().strip()
-                print(f"✅ 从 {prompt_file_path} 读取 {prompt_key} prompt")
-            except FileNotFoundError:
-                print(f"⚠️  警告: 未找到文件 {prompt_file_path}")
-            except Exception as e:
-                print(f"⚠️  警告: 读取文件出错 {e}")
-        else:
-            print(f"⚠️  警告: 配置中未找到 {prompt_file_key} 字段")
-    
-    # 方式2: 从 JSON 文件读取（保留兼容性）
-    if 'json_prompt_file' in config and 'prompt_key' in config:
-        # 获取配置文件所在目录
-        config_dir = os.path.dirname(os.path.abspath(config_file))
-        prompt_file_path = config['prompt_file']
-        
-        # 如果是相对路径，转换为绝对路径
-        if not os.path.isabs(prompt_file_path):
-            prompt_file_path = os.path.join(config_dir, prompt_file_path)
-        
-        # 读取JSON文件
-        try:
-            with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                prompts = json.load(f)
-            
-            prompt_key = config['prompt_key']
-            if prompt_key in prompts:
-                config['system_prompt'] = prompts[prompt_key]
-                print(f"✅ 从 {prompt_file_path} 读取 prompt: {prompt_key}")
-            else:
-                print(f"⚠️  警告: JSON文件中未找到key '{prompt_key}'，使用配置文件中的默认prompt")
-        except FileNotFoundError:
-            print(f"⚠️  警告: 未找到文件 {prompt_file_path}，使用配置文件中的默认prompt")
-        except json.JSONDecodeError as e:
-            print(f"⚠️  警告: JSON文件格式错误 {e}，使用配置文件中的默认prompt")
-    
     return config
 
 # 评测相关代码
@@ -250,6 +170,116 @@ def evaluate_module(config, data=None):
     # 每种情况分别展示两条例子
     print("\n各评测结果类型示例:")
     eval_types = ["exact_match", "partial_match", "subset", "has_extra_fields", "no_match"]
+    for eval_type in eval_types:
+        subset = data[data['argument_evaluation_result'] == eval_type]
+        shown = 0
+        if len(subset) == 0:
+            continue
+        print(f"--- 评测结果类型: {eval_type} ---")
+        for idx, row in subset.head(2).iterrows():
+            print(f"行 {idx}:")
+            print(f"  Ground Truth: {row[config['ground_truth_slot']]}")
+            print(f"  Model Response: {row[config['llm_slot']]}")
+            print(f"  评测结果: {row['argument_evaluation_result']}")
+            print()
+
+    data.to_excel(config['evaluate_output_file'])
+    print("评测结果保存于:", config['evaluate_output_file'])
+    return data
+
+
+
+def evaluate_module_rm(config, data=None):
+    if data is None:
+        data = pd.read_excel(config['evaluate_input_file'])
+    # 字段名
+    ground_truth_intent = config['ground_truth_intent']
+    ground_truth_slot = config['ground_truth_slot']
+    llm_intent = config['llm_intent']
+    llm_slot = config['llm_slot']
+    # 保证字段转dict
+    data[ground_truth_slot] = data[ground_truth_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
+    data[llm_slot] = data[llm_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
+    # 函数/槽分开比对
+    data["function_same"] = data.apply(lambda x: True if x[ground_truth_intent]==x[llm_intent] else False, axis=1)
+    data["argument_same"] = data.apply(lambda x: True if x[ground_truth_slot]==x[llm_slot] else False, axis=1)
+    print("函数相等分布:", data["function_same"].value_counts())
+    print("参数相等分布:", data["argument_same"].value_counts())
+
+    # 漂亮打印
+    from rich import print as rprint
+    summary_info = []
+    for col in ['function_same', 'argument_same']:
+        true_count = data[col].sum()
+        false_count = (~data[col]).sum()
+        total = true_count + false_count
+        accuracy = true_count / total if total > 0 else 0
+
+        summary = {
+            "指标名称": col,
+            "总数": total,
+            "正确(True)": int(true_count),
+            "错误(False)": int(false_count),
+            "准确率": f"{accuracy:.4%}"
+        }
+        summary_info.append(summary)
+
+    # 漂亮打印
+    rprint("[bold cyan]=== 评测结果简表 ===[/bold cyan]")
+    for info in summary_info:
+        rprint(
+            f"[bold yellow]{info['指标名称']}[/bold yellow] | "
+            f"总数: [bold magenta]{info['总数']}[/bold magenta] | "
+            f"正确: [bold green]{info['正确(True)']}[/bold green] | "
+            f"错误: [bold red]{info['错误(False)']}[/bold red] | "
+            f"准确率: [bold blue]{info['准确率']}[/bold blue]"
+        )
+    print("\n详细数值如下：")
+    for info in summary_info:
+        print(
+            f"{info['指标名称']}: 正确={info['正确(True)']}, 错误={info['错误(False)']}, "
+            f"准确率={info['准确率']} ({info['正确(True)']}/{info['总数']})"
+        )    
+
+
+
+    # 参数细粒度评测
+    data["argument_evaluation_result"] = data.apply(
+        lambda x: evaluate_arguments(x[ground_truth_slot], x[llm_slot]), axis=1
+    )
+    # 查看评测结果分布
+    print("评测结果分布:")
+    value_counts = data['argument_evaluation_result'].value_counts()
+    print(value_counts)
+
+    # 统计相关数量
+    total = len(data)
+    exact_match_count = (data['argument_evaluation_result'] == 'exact_match').sum()
+    subset_match_count = (data['argument_evaluation_result'] == 'subset').sum()
+    partial_match_count = (data['argument_evaluation_result'] == 'partial_match').sum()
+    exact_plus_partial = exact_match_count + partial_match_count
+    exact_plus_subset = exact_match_count + subset_match_count
+    exact_plus_partial_plus_subset = exact_plus_partial + subset_match_count
+
+    accuracy_1 = exact_plus_partial / total if total > 0 else 0
+    accuracy_2 = exact_plus_partial_plus_subset / total if total > 0 else 0
+
+
+    print("\n========== 具体计算过程如下 ==========")
+    print(f"数据总数 total = {total}")
+    print(f"exact_match 数量 = {exact_match_count}")
+    print(f"subset_match 数量 = {subset_match_count}")
+    print(f"partial_match 数量 = {partial_match_count}")
+    print(f"exact_match + partial_match = {exact_plus_partial}")
+    print(f"exact_match + partial_match + subset = {exact_plus_partial_plus_subset}")
+    print(f"(exact_match + partial_match) / total = {exact_plus_partial} / {total} = {accuracy_1:.4%}")
+    print(f"(exact_match + partial_match + subset_match) / total = {exact_plus_partial_plus_subset} / {total} = {accuracy_2:.4%}")
+    print(f"\n准确率 (exact_match+partial_match/total)：{accuracy_1:.4%}")
+    print(f"\n最终准确率 (exact_match+partial_match+subset/total)：{accuracy_2:.4%}")
+
+    # 每种情况分别展示两条例子
+    print("\n各评测结果类型示例:")
+    eval_types = ["exact_match", "partial_match", "has_extra_fields", "no_match"]
     for eval_type in eval_types:
         subset = data[data['argument_evaluation_result'] == eval_type]
         shown = 0

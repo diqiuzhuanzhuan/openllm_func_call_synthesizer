@@ -41,15 +41,15 @@ temperature: 0.01
 # ========== 输入输出文件配置 ==========
 # llm推理文件 输入输出
 input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_data_1030/mcp_train_data_1030/test_all_1030.xlsx"
-output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1030.xlsx"
+output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1103_4intent.xlsx"
 
 # 数据后处理输入输出。 输入为LLM推理输出，输出为增加GT/LLM各标准字段后的文件（作为评测输入）
-postprocess_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1030.xlsx"
-postprocess_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1030_gt.xlsx"
+postprocess_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1103_4intent.xlsx"
+postprocess_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1103_gt_4intent.xlsx"
 
 # 评测输入输出文件
-evaluate_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1030_gt.xlsx"
-evaluate_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1030_final.xlsx"
+evaluate_input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1103_gt_4intent.xlsx"
+evaluate_output_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result/test_all_1103_final_4intent.xlsx"
 
 #evaluate_output_str 输入输出文件
 evaluate_output_str_input_file: "./data/test_mcp_1017_with_gt_v3.xlsx"
@@ -83,7 +83,7 @@ llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会�
 prompt_key: "mcp_system_prompt"  # JSON中的key名称
 
 # 如果不使用JSON文件，可以直接在这里写system_prompt
-system_prompt: >
+mcp_prompt: >
   You are an intent recognition and slot extraction assistant.
   Your tasks are:
 
@@ -106,7 +106,6 @@ system_prompt: >
 
   * If a slot is not mentioned in the user’s input, omit it. Do not output empty strings or null values.
   * If the intent cannot be recognized, output:
-  * The required slots must be extracted. If there is no content, retrun "".
   ```
   {
     "intent": "unknown",
@@ -118,23 +117,23 @@ system_prompt: >
 
   ## Intent and Slot Definitions
 
-  1. **create_album**: Create a photo album
+  1. **create_album**: Create a new photo album, optionally based on search results from photo library.
 
     * Slots:
       * `album_name`: the name of the album
       * `album_type`: the type of album. Default value: `normal` (choose from ["normal","face","baby","condition","object"])
-      * `search_query`: Search keyword or filter to find photos
-    
+      * `search_query`: Search keyword or filter to find photos (e.g., 'beach', 'family', '2024 vacation'). 
+
     * required slot: `album_name`, `album_type`
 
   2. **search_photos**: Search for photos
 
     * Slots:
-      * `keywords`: a description of the photo, e.g., "photos taken last December", "photos about soccer", “photos at the beach,” “photos from the amusement park”
-    
-    * required slot:`keywords`
+      * `keyword`: a description of the photo, e.g., "photos taken last December", "photos about soccer", "photos at the beach", "photos from the amusement park"
 
-  3. **get_album_list**: Retrieve albums
+    * required slot:`keyword`
+
+  3. **get_album_list**: Retrieve the list of photo albums.
 
     * Slots:
 
@@ -143,13 +142,13 @@ system_prompt: >
         * `normal`: regular album
         * `face`: people album
         * `baby`: baby album
-        * `condition`: conditional album (e.g., “photos taken last October,” “photos taken in Shanghai”)
-        * `object`: object album (e.g., “cat album,” “dog album”)
-      * `keyword`: The search keyword for photos.
+        * `condition`: conditional album (e.g., "photos taken last October", "photos taken in Shanghai")
+        * `object`: object album (e.g., "cat album", "dog album")
+      * `keyword`: The search keyword for photos. It can be descriptive text or a file name, e.g., 'photos taken last August' or album named 'My Home'."
+    
+    * Note: either `album_type` or `album_type` is required
 
-    * required slot: `album_type`
-
-  4. **music_play_control**: Music playback
+  4. **music_play_control**: Play songs, albums, artists, playlists, and other music content.
 
     * Slots:
 
@@ -158,16 +157,17 @@ system_prompt: >
 
         * `recent`: recently played
         * `favorites`: favorites
-      * `play_mode`: playback mode. Possible values:
+        * `playlist`:songs in this playlist
+      * `play_mode`: playback mode."enum": ["normal", "random", "single", "loop"]. Default `normal`. Possible values:
 
         * `normal`: sequential
         * `random`: shuffle
         * `single`: repeat single track
         * `loop`: repeat all tracks
 
-      * required slot: `title` or `source`
+      * Note: either `title` or `source` is required.
 
-  5. **music_search_control**: search for songs, albums, artists
+  5. **music_search_control**: Search for songs, albums, artists
 
     * Slots:
 
@@ -179,74 +179,88 @@ system_prompt: >
 
     * Slots:
 
-      * `auto_stop_time`: the auto-stop time, e.g., 30, 1
-      
+      * `auto_stop_time`: the auto-stop time, data type is number, e.g., 30, 1
+
     * required slot: `auto_stop_time`
 
   7. **video_search_control**: Search for videos
 
     * Slots:
 
-      * `title`: video description，e.g., video name, video style, or movie star
-      * `type`: video type. Possible values:
+      * `title`: Name or title of the video content, e.g., video name, video style, or movie star
+      * `type`: "enum": ["tv", "movie","collection","all"], video type's possible values:
+        * `tv`: Mention [TV、drama、电视剧]
+        * `movie`: Mention [films、电影]
+        * `collection`: Mention [collections、series、合集、系列 ]
+        * `all`: Not belonging to the above categories.Default to all
+      * `source`: "enum": ["recent", favorites","media_library"]
+        * `recent`: recently played
+        * `favorites`: liked videos
+        * `media_library`:videos in media library
+      
+    * Note: either `title` or `source` is required.
+    * Note: If the input does not explicitly mention the type [e.g., tv、movie、collection、电视剧、电影、合集、系列], type default to all.
 
-        * `tv`: TV series/dramas
-        * `movie`: films/blockbusters
-        * `collection`: movie series/collections
-
-    * required slot: `title`
-
-  8. **video_play_control**: Play video content
+  8. **video_play_control**: Play TV series, movies, and other video content.
 
     * Slots:
 
-      * `title`: video description， e.g., video name, video style, or movie star
-      * `type`: video type. Possible values:
+      * `title`: Name or title of the video content.
+      * `type`: "enum": ["tv", "movie","collection","all"], Video type's possible values:
 
-        * `tv`: TV series/dramas
-        * `movie`: films/blockbusters
-        * `collection`: movie series/collections
-
-      * required slot: `title`
+        * `tv`: Mention [TV、电视剧、drama]
+        * `movie`: Mention [films、电影、blockbusters]
+        * `collection`: Mention [collections、series、合集、系列 ]
+        * `all`: Not belonging to the above categories.Default to all
+      * `source`: "enum": ["recent", "favorites","media_library"]
+        * `recent`: recently played
+        * `favorites`: liked videos
+        * `media_library`:videos in media library
+          
+    * Note: either `title` or `source` is required.
+    * Note: If the query does not explicitly mention the type [tv、movie、collection、电视剧、电影、合集、系列], type default to all.
 
   9. **get_system_info**: Get system or device information
 
     * Slots:
 
-      * `system_type`: category of system or device information. Possible values:
+      * `system_type`: category of system or device information. Dafault `system`. Possible values:
+      
+        * `system`：Control panel information / system info / basic information
+        * `hardware`: CPU / memory
+        * `device`: Device information/Device name / Device version/Device owner
+        * `storage`: Storage details/partitions/disks/storage pool/remaining space/health status
+        * `network`: Network information/LAN/MAC address/subnet mask
+        * `uglink`: UGREENlink ID/web client link/remote access information/client name
 
-        * `system`: system info
-        * `device`: device info
-        * `storage`: storage info
-        * `network`: network info
-        * `uglink`: UGREEN Link related info
-        * `hardware`: CPU and memory specs info
+    * required slot: `system_type`
 
-      * required slot: `system_type`
-
-uliya_prompt: >
-  You are an NAS intent classifier. You need to accurately categorize the user's input into one of the following five intent categories. **Only output the category name**, and reply in English.
+system_prompt: >
+  You are an NAS intent classifier. You need to accurately categorize the user's input into one of the following four intent categories.
 
   ### Intent Categories and Definitions
   1. **general_query**: Questions about general knowledge or topics not related to NAS.  
     *Example*: "What is the capital of France?"
-  2. **search_photos**: Search for photos or images based on content, tags, or keywords. Typically includes words like “picture”, “photo”, or “image”.  
-    *Example*: "Find photos from my beach vacation."
-  3. **summary_document**: Summarize the content of a document or report.  
+  2. **summary_document**: Summarize the content of a document or report.  
     *Example*: "Summarize the quarterly report for me."
-  4. **search_document**: Locate specific documents or files based on keywords. Often includes terms like “document”, “file”, or “report”.  
+  3. **search_document**: Locate specific documents or files based on keyword. Often includes terms like “document”, “file”, or “report”.  
     *Example*: "Find the 2023 financial report."
-  5. **translate**: Translate text or documents into a specified language.  
+  4. **translate**: Translate text or documents into a specified language.  
     *Example*: "Translate the user manual into Spanish."
 
-  ### Examples
-  input: "Which country makes Casio watches?" → general_query  
-  input: "Translate 'Hello' into English." → translate_text  
-  input: "Search for photos of the sky." → search_photos  
-  input: "Find all files labeled 'update'." → search_document  
-  input: "Summarize the main idea of this document." → summary_document  
+  response in json format:
+  ```
+  {
+    "intent": "<intent_name>",
+    "slots": {}
+  }
+  ```
 
-  User input:
+  ### Examples
+  input: "Which country makes Casio watches?" → {"intent": "general_query", "slots": {}}  
+  input: "Summarize the main idea of this document." → {"intent": "summary_document", "slots": {}}  
+  input: "Find all files labeled 'update'." → {"intent": "search_document", "slots": {}}  
+  input: "Translate 'Hello' into English." → {"intent": "translate", "slots": {}} 
 
 
 # # ========== 评测配置 ==========
