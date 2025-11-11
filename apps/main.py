@@ -32,7 +32,8 @@ from openllm_func_call_synthesizer.core.critic import Critic
 from datasets import Dataset, concatenate_datasets
 from openllm_func_call_synthesizer.utils import (
     pick_unique,
-    convert_to_openai_tools
+    convert_to_openai_tools,
+    tool_format_convert,
 )
 
 from datasets import load_dataset
@@ -98,7 +99,7 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     # You can load the JSONL with:
     load_dataset("json", data_files={"train": str(out_dir/"train.jsonl")})
 
-def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
+def generate_function_call_dataset(cfg: DictConfig, mcp_tools: List[Dict]):
     # Load the function dataset
     function_call_cfg = cfg.synthesizer.function_call_generation
     function_dataset_path = Path(function_call_cfg.function_dataset)
@@ -116,6 +117,7 @@ def generate_function_call_dataset(cfg: DictConfig, function_docs: List[Dict]):
     print(f"sampled {len(sampled)} functions: {sampled}")
     functions = sampled['function']
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
+    function_docs = tool_format_convert(mcp_tools, fc_kwargs['model_name'])
     function_call_generator = FunctionCallGenerator(
         **fc_kwargs,
         generation_params={"tools":function_docs['tools']},
@@ -176,8 +178,8 @@ def main(cfg: DictConfig):
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    generate_query_dataset(cfg, function_docs=openai_format_tools)
-    generate_function_call_dataset(cfg, function_docs=openai_format_tools)
+    #generate_query_dataset(cfg, function_docs=openai_format_tools)
+    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
 
 if __name__ == "__main__":

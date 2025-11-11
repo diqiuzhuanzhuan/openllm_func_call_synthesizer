@@ -106,6 +106,18 @@ class ToolMetadata:
             },
         }
 
+    def to_gemini_tool(self) -> Dict[str, Any]:
+        """To Google Gemini tool."""
+        return {
+            "function_declarations": [
+                {
+                    "name": self.name,
+                    "description": self.description,
+                    "parameters": self.get_parameters_dict(),
+                }
+            ]
+        }
+
     
 def convert_to_mcp_tools(function_docs: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     tools = []
@@ -118,6 +130,7 @@ def convert_to_mcp_tools(function_docs: List[Dict[str, Any]]) -> Dict[str, List[
         }
         tools.append(tool)
     return {"tools": tools}
+
 
 def convert_to_openai_tools(tools: List[Tool]) -> Dict[str, List[Dict[str, Any]]]:
     functions = []
@@ -132,6 +145,23 @@ def convert_to_openai_tools(tools: List[Tool]) -> Dict[str, List[Dict[str, Any]]
         }
         functions.append(function)
     return {"tools": functions}
+
+
+def convert_to_gemini_tools(tools: List[Tool]) -> Dict[str, List[Dict[str, Any]]]:
+    functions = []
+    for tool in tools:
+        function = {
+            "function_declarations": [
+                {
+                    "name": tool.name,
+                    "description": tool.description or tool.name,
+                    "parameters": tool.inputSchema or {},
+                }
+            ]
+        }
+        functions.append(function)
+    return {"tools": functions}
+
 
 def extract_format(format: str='json', content: str="") -> Any:
     import re
@@ -153,6 +183,14 @@ def extract_format(format: str='json', content: str="") -> Any:
                 pass
     return None
 
+def tool_format_convert(mcp_tools: List[Dict[str, Any]], model: str) -> List[Dict[str, Any]]:
+    if model.startswith("gpt"):
+        return convert_to_openai_tools(mcp_tools)
+    if model.startswith("gemini"):
+        return convert_to_gemini_tools(mcp_tools)
+    if model.startswith("claude"):
+        return mcp_tools
+    return convert_to_openai_tools(mcp_tools)
 
 def read_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():

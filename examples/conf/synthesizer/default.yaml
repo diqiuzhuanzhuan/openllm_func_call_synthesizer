@@ -3,7 +3,7 @@ name: "default_synthesizer"
 
 mcp_servers:
   "ugreen_mcp":
-    transport: "http://localhost:10000/mcp"
+    transport: "http://192.168.111.9:12000/mcp"
 
 query_generation:
   function_docs: examples/function_docs.json
@@ -32,7 +32,7 @@ query_generation:
       backend: "openai"
       models:
         - "claude-sonnet-4-20250514"
-        - "claude-3-5-sonnet-20241022"
+        - "claude-sonnet-4-5-20250929"
 
     google:
       backend: "openai"

@@ -27,6 +27,7 @@ from .utils import (
     pick_unique,
     convert_to_openai_tools,
     ToolMetadata,
+    tool_format_convert,
 )
 
 __ALL__ = [
@@ -36,4 +37,5 @@ __ALL__ = [
     "pick_unique",
     "convert_to_openai_tools",
     "ToolMetadata",
+    "tool_format_convert",
 ]
