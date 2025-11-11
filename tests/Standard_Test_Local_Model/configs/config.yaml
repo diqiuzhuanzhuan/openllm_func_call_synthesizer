@@ -18,14 +18,16 @@
 # 选择使用本地模型还是API模式
 # false 或不设置 = 本地模型模式（需要GPU）
 # true = API模式（通过HTTP API调用远程模型）
-use_api: true
+use_api: false
 
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "3,4,5,6"
+cuda_device: "0,1,2,7"
+num_processes: 4
 
 # 本地模型路径
-model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1017_intent_mcp/stf/checkpoint-2400"
+# model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
+model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1103_intent_mcp/sft/checkpoint-300"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
@@ -38,22 +40,52 @@ model_name: "mcp_intent_1016:q4_k_m"
 # API调用参数（可选，默认值如下）
 temperature: 0.01
 
-# ========== 输入输出文件配置 ==========
-# llm推理文件 输入输出
-input_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/processed_data/1016_v1/mcp/test_all_mcp.xlsx"
-output_file: "./data/test_mcp_1017_v2.xlsx"
+# 通过指定 root 目录来简化路径
+root: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_data_1103/mcp_data_1103_for_train"
 
-# 数据后处理输入输出。 输入为LLM推理输出，输出为增加GT/LLM各标准字段后的文件（作为评测输入）
-postprocess_input_file: "./data/test_mcp_1017_v3.xlsx"
-postprocess_output_file: "./data/test_mcp_1017_with_gt_v3.xlsx"
+# 选择使用哪个系统提示词（仅用于向后兼容）
+prompt_key: "uliya"  # uliya or mcp
+
+# ========== 新增：混合/分割模式配置 ==========
+# mode: 选择运行模式
+#   - "hybrid": 混合模式，先用 mcp_input 请求，如果没有结果再用 uliya_input
+#   - "split": 分割模式，根据 gt_intent 是否在 mcp_intent_list/uliya_intent_list 中选择对应 prompt
+mode: "hybrid"  # hybrid or split
+
+# split 模式需要的配置：定义哪些 intent 使用哪个 prompt
+mcp_intent_list:
+  - "create_album"
+  - "search_photos"
+  - "get_album_list"
+  - "music_play_control"
+  - "music_search_control"
+  - "music_settings_control"
+  - "video_search_control"
+  - "video_play_control"
+  - "get_system_info"
+
+uliya_intent_list:
+  - "general_query"
+  - "summary_document"
+  - "search_document"
+  - "translate"
+
+# ========== 输入输出文件配置 ==========
+# 支持 ${root} 变量，代码要先解析
+input_file: "${root}/test_all.xlsx"
+output_file: "${root}/test_all_output_hybrid.xlsx"
+
+# 数据后处理输入输出
+postprocess_input_file: "${root}/test_all_output_hybrid.xlsx"
+postprocess_output_file: "${root}/test_all_processed_hybrid.xlsx"
 
 # 评测输入输出文件
-evaluate_input_file: "./data/test_mcp_1017_with_gt_v3.xlsx"
-evaluate_output_file: "./data/test_mcp_1017_final_v3.xlsx"
+evaluate_input_file: "${root}/test_all_processed_hybrid.xlsx"
+evaluate_output_file: "${root}/test_all_evaluate_hybrid.xlsx"
 
-#evaluate_output_str 输入输出文件
-evaluate_output_str_input_file: "./data/test_mcp_1017_with_gt_v3.xlsx"
-evaluate_output_str_output_file: "./data/test_mcp_1017_final_v3.xlsx"
+# #evaluate_output_str 输入输出文件
+# evaluate_output_str_input_file: "${root}/test_mcp_1017_with_gt_v3.xlsx"
+# evaluate_output_str_output_file: "${root}/test_mcp_1017_final_v3.xlsx"
 
 # ========== 步骤执行控制 ==========
 # 控制执行哪些步骤 (true/false)
@@ -62,6 +94,13 @@ steps:
   postprocess: true             # 是否执行数据后处理（LLM+GT标准字段合成一步）
   evaluate: true                  # 是否执行评测
   evaluate_output_str: false
+
+# ========== 评测模式配置 ==========
+# evaluate_separate: 是否分开评测 MCP 和 Uliya 数据
+#   - false (默认): 合并评测所有数据
+#   - true: 根据 gt_intent 是否在 mcp_intent_list/uliya_intent_list 中分开评测
+evaluate_separate: true  # 设为 true 则分开评测
+
 # ========== 数据字段配置 ==========
 # 输入数据中包含用户查询的字段名
 input_field: "input"
@@ -76,121 +115,16 @@ llm_intent: "llm_intent"    # 数据中 llm intent 列名， 这个如果没有 
 llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会从llm_response来提取slots
 
 # ========== 系统提示词配置 ==========
-system_prompt: >
-  You are an intent recognition and slot extraction assistant.
-  Your tasks are:
+# # 方式1: 从JSON文件读取
+# json_prompt_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/prompt_dict.json"  # JSON文件路径
 
-  1. Identify the user’s intent (`intent`);
-  2. Extract the corresponding slots (`slots`) from the user’s input.
+## 方式2: 从txt 读取prompt
+system_prompt_mcp_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp.txt"
+system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_uliya.txt"
 
-  Please strictly follow the output requirements below:
 
-  * The output must always use JSON format:
-
-  ```
-  {
-    "intent": "<intent_name>",
-    "slots": {
-      "<slot1>": "<value>",
-      "<slot2>": "<value>"
-    }
-  }
-  ```
-
-  * If a slot is not mentioned in the user’s input, omit it. Do not output empty strings or null values.
-  * If the intent cannot be recognized, output:
-
-  ```
-  {
-    "intent": "unknown",
-    "slots": {}
-  }
-  ```
-
-  ---
-
-  ## Intent and Slot Definitions
-
-  1. **create_album**: Create a photo album
-
-    * Slots:
-
-      * `album_name`: the name of the album
-      * `album_type`: the type of album. Default value: `normal` (regular album)
-
-  2. **search_photos**: Search for photos
-
-    * Slots:
-
-      * `keywords`: a description of the photo, e.g., "photos taken last December", "photos about soccer", “photos at the beach,” “photos from the amusement park”
-
-  3. **get_album_list**: Retrieve albums
-
-    * Slots:
-
-      * `album_type`: the type of album. Possible values:
-
-        * `normal`: regular album
-        * `face`: people album
-        * `baby`: baby album
-        * `condition`: conditional album (e.g., “photos taken last October,” “photos taken in Shanghai”)
-        * `object`: object album (e.g., “cat album,” “dog album”)
-
-  4. **music_play_control**: Music playback
-
-    * Slots:
-
-      * `title`: the name of a song, album, artist, or playlist
-      * `source`: music source. Possible values:
-
-        * `recent`: recently played
-        * `favorites`: favorites
-      * `play_mode`: playback mode. Possible values:
-
-        * `normal`: sequential
-        * `random`: shuffle
-        * `single`: repeat single track
-        * `loop`: repeat all tracks
-
-  5. **music_settings_control**: Music player settings
-
-    * Slots:
-
-      * `auto_stop_time`: the auto-stop time, e.g., 30, 1
-
-  6. **video_search_control**: Search for videos
-
-    * Slots:
-
-      * `title`: video description，e.g., video name, video style, or movie star
-      * `type`: video type. Possible values:
-
-        * `tv`: TV series/dramas
-        * `movie`: films/blockbusters
-        * `collection`: movie series/collections
-
-  7. **video_play_control**: Play video content
-
-    * Slots:
-
-      * `title`: video description， e.g., video name, video style, or movie star
-      * `type`: video type. Possible values:
-
-        * `tv`: TV series/dramas
-        * `movie`: films/blockbusters
-        * `collection`: movie series/collections
-
-  8. **get_system_info**: Get system or device information
-
-    * Slots:
-
-      * `system_type`: category of system or device information. Possible values:
-
-        * `system`: system info
-        * `device`: device info
-        * `storage`: storage info
-        * `network`: network info
-        * `uglink`: UGREEN Link related info
+# 如果不使用JSON文件，可以直接在这里写system_prompt
+ 
 
 # # ========== 评测配置 ==========
 # # 是否进行评测 (已被steps.evaluate替代，保留兼容性)

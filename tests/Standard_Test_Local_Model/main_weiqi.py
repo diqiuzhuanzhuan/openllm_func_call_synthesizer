@@ -7,7 +7,7 @@ import pandas as pd
 import ast
 
 # 导入本地模型和API调用模块
-from llm_local_caller import batch_llm_predict, batch_llm_predict_threaded
+from llm_local_caller import batch_llm_predict
 from llm_api_caller import batch_llm_predict_api
 
 def load_config(config_file):
@@ -49,7 +49,7 @@ def load_config(config_file):
     config = replace_variables(config)
     
     # 读取 prompt 文件
-    # 方式1: 根据 prompt_key 选择对应的 txt 文件（推荐，保留兼容性）
+    # 方式1: 根据 prompt_key 选择对应的 txt 文件（推荐）
     if 'prompt_key' in config:
         prompt_key = config['prompt_key']
         prompt_file_key = f'system_prompt_{prompt_key}_file'
@@ -67,27 +67,6 @@ def load_config(config_file):
                 print(f"⚠️  警告: 读取文件出错 {e}")
         else:
             print(f"⚠️  警告: 配置中未找到 {prompt_file_key} 字段")
-    
-    # 新增：始终读取 mcp 和 uliya 两个 prompt
-    if 'system_prompt_mcp_file' in config:
-        try:
-            with open(config['system_prompt_mcp_file'], 'r', encoding='utf-8') as f:
-                config['system_prompt_mcp'] = f.read().strip()
-            print(f"✅ 从 {config['system_prompt_mcp_file']} 读取 MCP prompt")
-            print('----config[system_prompt_mcp]----', config['system_prompt_mcp'])
-        except Exception as e:
-            print(f"⚠️  警告: 读取 MCP prompt 文件出错 {e}")
-            config['system_prompt_mcp'] = ''
-    
-    if 'system_prompt_uliya_file' in config:
-        try:
-            with open(config['system_prompt_uliya_file'], 'r', encoding='utf-8') as f:
-                config['system_prompt_uliya'] = f.read().strip()
-            print(f"✅ 从 {config['system_prompt_uliya_file']} 读取 Uliya prompt")
-            print('----config[system_prompt_uliya]----', config['system_prompt_uliya'])
-        except Exception as e:
-            print(f"⚠️  警告: 读取 Uliya prompt 文件出错 {e}")
-            config['system_prompt_uliya'] = ''
     
     # 方式2: 从 JSON 文件读取（保留兼容性）
     if 'json_prompt_file' in config and 'prompt_key' in config:
@@ -175,35 +154,22 @@ def evaluate_arguments(ground_truth, model_response):
     return 'no_match'
 
 
-def evaluate_single_dataset(data, config, dataset_name="All"):
-    """
-    对单个数据集进行评测
-    Args:
-        data: 要评测的DataFrame
-        config: 配置字典
-        dataset_name: 数据集名称（用于打印）
-    Returns:
-        评测后的DataFrame
-    """
-    print(f"\n{'='*60}")
-    print(f"开始评测数据集: {dataset_name} (共 {len(data)} 条)")
-    print(f"{'='*60}")
-    
+def evaluate_module(config, data=None):
+    if data is None:
+        data = pd.read_excel(config['evaluate_input_file'])
     # 字段名
     ground_truth_intent = config['ground_truth_intent']
     ground_truth_slot = config['ground_truth_slot']
     llm_intent = config['llm_intent']
     llm_slot = config['llm_slot']
-    
     # 保证字段转dict
     data[ground_truth_slot] = data[ground_truth_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
     data[llm_slot] = data[llm_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
-    
     # 函数/槽分开比对
     data["function_same"] = data.apply(lambda x: True if x[ground_truth_intent]==x[llm_intent] else False, axis=1)
     data["argument_same"] = data.apply(lambda x: True if x[ground_truth_slot]==x[llm_slot] else False, axis=1)
-    print(f"\n【{dataset_name}】函数相等分布:", data["function_same"].value_counts())
-    print(f"【{dataset_name}】参数相等分布:", data["argument_same"].value_counts())
+    print("函数相等分布:", data["function_same"].value_counts())
+    print("参数相等分布:", data["argument_same"].value_counts())
 
     # 漂亮打印
     from rich import print as rprint
@@ -224,7 +190,7 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
         summary_info.append(summary)
 
     # 漂亮打印
-    rprint(f"[bold cyan]=== 【{dataset_name}】评测结果简表 ===[/bold cyan]")
+    rprint("[bold cyan]=== 评测结果简表 ===[/bold cyan]")
     for info in summary_info:
         rprint(
             f"[bold yellow]{info['指标名称']}[/bold yellow] | "
@@ -233,19 +199,21 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
             f"错误: [bold red]{info['错误(False)']}[/bold red] | "
             f"准确率: [bold blue]{info['准确率']}[/bold blue]"
         )
-    print(f"\n【{dataset_name}】详细数值如下：")
+    print("\n详细数值如下：")
     for info in summary_info:
         print(
             f"{info['指标名称']}: 正确={info['正确(True)']}, 错误={info['错误(False)']}, "
             f"准确率={info['准确率']} ({info['正确(True)']}/{info['总数']})"
         )    
 
+
+
     # 参数细粒度评测
     data["argument_evaluation_result"] = data.apply(
         lambda x: evaluate_arguments(x[ground_truth_slot], x[llm_slot]), axis=1
     )
     # 查看评测结果分布
-    rprint(f"[bold cyan]=== 【{dataset_name}】argument评测结果分布 ===[/bold cyan]")
+    rprint("[bold cyan]=== argument评测结果分布 ===[/bold cyan]")
     value_counts = data['argument_evaluation_result'].value_counts()
     print(value_counts)
 
@@ -261,7 +229,9 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
     accuracy = exact_plus_partial / total if total > 0 else 0
 
     # 漂亮打印 argument详情
-    rprint(f"\n[bold cyan]========== 【{dataset_name}】argument具体计算过程如下 ==========[/bold cyan]")
+    from rich import print as rprint
+
+    rprint("\n[bold cyan]========== argument具体计算过程如下 ==========[/bold cyan]")
     rprint(f"[bold yellow]数据总数 total[/bold yellow] = [bold magenta]{total}[/bold magenta]")
     rprint(f"[bold yellow]完全一致 exact_match 数量[/bold yellow] = [bold green]{exact_match_count}[/bold green]")
     rprint(f"[bold yellow]部分匹配 partial_match 数量[/bold yellow] = [bold blue]{partial_match_count}[/bold blue]")
@@ -269,17 +239,20 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
 
     rprint(f"[bold]([green]exact_match[/green] + [blue]partial_match[/blue]) / total = "
            f"[green]{exact_match_count + partial_match_count}[/green] / [magenta]{total}[/magenta] = [bold red]{accuracy:.4%}[/bold red][/bold]")
+
     
     combined_accuracy = combined_count / total if total > 0 else 0
 
     rprint(f"[bold]([green]exact_match[/green] + [blue]partial_match[/blue] + [cyan]subset[/cyan]) / total = "
            f"[green]{combined_count}[/green] / [magenta]{total}[/magenta] = [bold red]{combined_accuracy:.4%}[/bold red][/bold]")
 
+
     # 每种情况分别展示两条例子
-    print(f"\n【{dataset_name}】各评测结果类型示例:")
+    print("\n各评测结果类型示例:")
     eval_types = ["exact_match", "partial_match", "subset", "has_extra_fields", "no_match"]
     for eval_type in eval_types:
         subset = data[data['argument_evaluation_result'] == eval_type]
+        shown = 0
         if len(subset) == 0:
             continue
         print(f"--- 评测结果类型: {eval_type} ---")
@@ -289,79 +262,10 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
             print(f"  Model Response: {row[config['llm_slot']]}")
             print(f"  评测结果: {row['argument_evaluation_result']}")
             print()
-    
+
+    data.to_excel(config['evaluate_output_file'])
+    print("评测结果保存于:", config['evaluate_output_file'])
     return data
-
-
-def evaluate_module(config, data=None):
-    """
-    主评测函数：根据配置决定是合并评测还是分开评测
-    """
-    if data is None:
-        data = pd.read_excel(config['evaluate_input_file'])
-    
-    # 获取评测模式配置
-    evaluate_separate = config.get('evaluate_separate', False)
-    
-    if evaluate_separate:
-        # 分开评测模式
-        print("\n" + "="*80)
-        print("【分开评测模式】根据 intent 类型分别评测 MCP 和 Uliya 数据")
-        print("="*80)
-        
-        mcp_intent_list = config.get('mcp_intent_list', [])
-        uliya_intent_list = config.get('uliya_intent_list', [])
-        
-        # 分离数据
-        data_mcp = data[data['gt_intent'].isin(mcp_intent_list)].copy()
-        data_uliya = data[data['gt_intent'].isin(uliya_intent_list)].copy()
-        data_other = data[~data['gt_intent'].isin(mcp_intent_list + uliya_intent_list)].copy()
-        
-        print(f"\n数据分布: MCP={len(data_mcp)} 条, Uliya={len(data_uliya)} 条, Other={len(data_other)} 条")
-        
-        # 分别评测
-        if len(data_mcp) > 0:
-            data_mcp = evaluate_single_dataset(data_mcp, config, dataset_name="MCP")
-        
-        if len(data_uliya) > 0:
-            data_uliya = evaluate_single_dataset(data_uliya, config, dataset_name="Uliya")
-        
-        if len(data_other) > 0:
-            data_other = evaluate_single_dataset(data_other, config, dataset_name="Other")
-        
-        # 合并结果并保存
-        data_evaluated = pd.concat([data_mcp, data_uliya, data_other], ignore_index=False).sort_index()
-        
-        # 保存分别的结果
-        output_dir = config['evaluate_output_file'].rsplit('/', 1)[0] if '/' in config['evaluate_output_file'] else '.'
-        output_base = config['evaluate_output_file'].rsplit('.', 1)[0]
-        
-        if len(data_mcp) > 0:
-            data_mcp.to_excel(f"{output_base}_mcp.xlsx", index=False)
-            print(f"\nMCP 评测结果保存于: {output_base}_mcp.xlsx")
-        
-        if len(data_uliya) > 0:
-            data_uliya.to_excel(f"{output_base}_uliya.xlsx", index=False)
-            print(f"Uliya 评测结果保存于: {output_base}_uliya.xlsx")
-        
-        if len(data_other) > 0:
-            data_other.to_excel(f"{output_base}_other.xlsx", index=False)
-            print(f"Other 评测结果保存于: {output_base}_other.xlsx")
-        
-        data_evaluated.to_excel(config['evaluate_output_file'], index=False)
-        print(f"完整评测结果保存于: {config['evaluate_output_file']}")
-        
-        return data_evaluated
-    else:
-        # 合并评测模式
-        print("\n" + "="*80)
-        print("【合并评测模式】对所有数据进行统一评测")
-        print("="*80)
-        
-        data = evaluate_single_dataset(data, config, dataset_name="All")
-        data.to_excel(config['evaluate_output_file'], index=False)
-        print(f"\n评测结果保存于: {config['evaluate_output_file']}")
-        return data
 
 def evaluate_output_str_module(config, data=None):
     """
@@ -516,8 +420,7 @@ if __name__ == '__main__':
             df = batch_llm_predict_api(config)
         else:
             print('使用本地模型进行推理')
-            # df = batch_llm_predict(config)
-            df = batch_llm_predict_threaded(config)
+            df = batch_llm_predict(config)
         print('------end inference------', time.strftime("%Y-%m-%d %H:%M:%S"))
     
     # 步骤2: 数据后处理
