@@ -24,9 +24,7 @@ from typing import List, Dict, Any
 from pathlib import Path
 from typing import Any
 import yaml
-<<<<<<< HEAD
 import os
-=======
 from fastmcp.tools import Tool
 from typing import Optional, Type
 from pydantic import BaseModel
