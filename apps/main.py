@@ -54,6 +54,7 @@ async def get_mcp_tools(cfg: DictConfig) -> List[Dict]:
 
 def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     data_file = cfg.synthesizer.query_generation.function_docs
+    query_generator_cfg = cfg.synthesizer.query_generation
     if not Path(data_file).exists():
         raise FileNotFoundError(f"File {data_file} not found")
     with open(data_file, "r") as f:
@@ -61,12 +62,12 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     data = [{'function': json.dumps(e, ensure_ascii=False, indent=2)} for e in function_docs['tools']]
     pretty.pprint(data)
     # Loop over configured languages to generate multilingual query variations
-    languages = cfg.synthesizer.query_generation.get('languages', ['English'])
+    languages = query_generator_cfg.get('languages', ['English'])
     output_datasets = []
     for language in languages:
-        for name in cfg.synthesizer.query_generation.providers:
+        for name in query_generator_cfg.providers:
             print(f"provider: {name}, language: {language}")
-            provider = cfg.synthesizer.query_generation.providers[name]
+            provider = query_generator_cfg.providers[name]
             for model in provider.models:
                 print(f"model: {model}")
                 # Instantiate generator with language
@@ -88,7 +89,7 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
     combined = concatenate_datasets(output_datasets)
 
     # Ensure output directory exists
-    out_dir = Path(cfg.synthesizer.query_generation.get('output_dir', 'data')) / cfg.synthesizer.query_generation.name
+    out_dir = Path(query_generator_cfg.get('output_dir', 'data')) / cfg.synthesizer.query_generation.name
     out_dir.mkdir(parents=True, exist_ok=True)
     # Save in multiple formats
     # Save JSON Lines under 'train.jsonl' so HuggingFace load_dataset can load it as the 'train' split
@@ -178,7 +179,7 @@ def main(cfg: DictConfig):
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
     pretty.pprint(synth_cfg)
-    #generate_query_dataset(cfg, function_docs=openai_format_tools)
+    generate_query_dataset(cfg, function_docs=openai_format_tools)
     generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
 
