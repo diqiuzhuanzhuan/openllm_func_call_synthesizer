@@ -123,7 +123,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: List[Dict]):
         **fc_kwargs,
         generation_params={"tools":function_docs['tools']},
     )
-    max_num = cfg.synthesizer.function_call_generation.max_num
+    max_num = function_call_cfg.max_num
     if max_num > 0:
         dataset = dataset["train"].select(range(max_num))
     else:
@@ -132,7 +132,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: List[Dict]):
     fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk
-    output_dir = Path(cfg.synthesizer.function_call_generation.output_dir)/cfg.synthesizer.function_call_generation.name
+    output_dir = Path(function_call_cfg.output_dir)/function_call_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
     fcg.dataset.to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
     fcg.dataset.to_csv(str(output_dir / "output.csv"))
