@@ -43,9 +43,9 @@ from fastmcp import Client
 from typing import List, Dict
 
 
-async def get_mcp_tools(cfg: DictConfig) -> List[Dict]:
+async def get_mcp_tools(mcp_cfg: Dict) -> List[Dict]:
     """Get tools from MCP server."""
-    mcp_cfg = cfg.synthesizer.mcp_servers["ugreen_mcp"]
+    mcp_cfg = mcp_cfg
     client = Client(**mcp_cfg)
     async with client:
         tools = await client.list_tools()
@@ -159,7 +159,7 @@ def critic_function_call_dataset(cfg: DictConfig):
     else:
         dataset = dataset["train"]
     cg = critic_generate(dataset=dataset)  
-    output_dir = Path(cfg.synthesizer.critic.output_dir)/cfg.synthesizer.critic.name
+    output_dir = Path(critic_cfg.output_dir)/critic_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
     cg.dataset.to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
     cg.dataset.to_csv(str(output_dir / "output.csv"))
@@ -173,7 +173,7 @@ def main(cfg: DictConfig):
     pretty.pprint(cfg)
     print("loading tools from MCP server:")
     loop = asyncio.get_event_loop()
-    mcp_tools = loop.run_until_complete(get_mcp_tools(cfg=cfg))
+    mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
     pretty.pprint(openai_format_tools)
     synth_cfg = cfg.synthesizer

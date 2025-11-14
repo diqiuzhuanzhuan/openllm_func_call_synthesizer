@@ -29,34 +29,42 @@ def main():
     from openai import OpenAI
 
 
-    client = OpenAI(base_url="http://192.168.111.3:8000/v1", api_key="dummy")
+    client = OpenAI(base_url="http://192.168.111.6:8000/v1", api_key="dummy")
+    while True:
+        user_input = input("请输入你的问题：")
+        if user_input == "exit":
+            break
 
-    messages = [
-        {"role": "user", "content": "播放周杰伦的七里香"}
-    ]
+        messages = [
+            {'role': 'system', 'content': 'You are a helpful assistant.'},
+            {"role": "user", "content": user_input}
+        ]
 
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "get_weather",
-                "description": "获取城市天气",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"city": {"type": "string"}},
-                    "required": ["city"]
+        if not openai_format_tools:
+            openai_format_tools = {
+                'tools': [
+                    {
+                        "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "获取城市天气",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"city": {"type": "string"}},
+                        "required": ["city"]
+                    }
                 }
             }
-        }
-    ]
+        ]
+            }
 
-    response = client.chat.completions.create(
-        model="qwen",
-        messages=messages,
-        tools=openai_format_tools['tools']  # ⚡ 告诉模型有哪些工具可调用
-    )
-    print(response)
-        
+        response = client.chat.completions.create(
+            model="qwen",
+            messages=messages,
+            tools=openai_format_tools['tools']  # ⚡ 告诉模型有哪些工具可调用
+        )
+        print(response)
+            
 
 if __name__ == "__main__":
     main()
