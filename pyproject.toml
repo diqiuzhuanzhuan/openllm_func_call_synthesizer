@@ -69,3 +69,8 @@ package = true
 [tool.uv.pip]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 extra-index-url = ["https://pypi.org/simple"]
+
+
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
+package-dir = { "" = "src" }

@@ -36,9 +36,10 @@ query_generation:
         - "claude-sonnet-4-5-20250929"
 
     google:
-      backend: "litellm"
+      backend: "openai"
       models:
-        - "gemini/gemini-2.5-pro-nothinking"
+        #- "gemini/gemini-2.5-pro-nothinking"
+        - "gemini-2.5-pro-nothinking"
 
 
 
@@ -53,7 +54,9 @@ function_call_generation:
     model_name: "gpt-4o"
     backend: "openai"
     backend_params:
-      require_all_responses: False  
+      require_all_responses: False
+      max_concurrent_requests: 30
+ 
 
 
 critic:
@@ -72,3 +75,4 @@ critic:
     backend: "openai"
     backend_params:
       require_all_responses: False  
+      max_concurrent_requests: 30

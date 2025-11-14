@@ -28,6 +28,7 @@ from .utils import (
     convert_to_openai_tools,
     ToolMetadata,
     tool_format_convert,
+    get_mcp_tools
 )
 
 __ALL__ = [
@@ -38,4 +39,5 @@ __ALL__ = [
     "convert_to_openai_tools",
     "ToolMetadata",
     "tool_format_convert",
+    "get_mcp_tools"
 ]

@@ -317,6 +317,17 @@ def complete_language_column(row):
     else:
         return detect_language(row['input'])
 
+        
+async def get_mcp_tools(mcp_cfg: Dict) -> List[Dict]:
+    """Get tools from MCP server."""
+    from fastmcp import Client
+    mcp_cfg = mcp_cfg
+    client = Client(**mcp_cfg)
+    async with client:
+        tools = await client.list_tools()
+    return tools
+
+
 if __name__ == "__main__":
     data = extract_format(content='```json\n{"a": 1}\n```')
     print(data)
