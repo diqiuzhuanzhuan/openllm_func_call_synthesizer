@@ -62,6 +62,25 @@ if __name__ == "__main__":
         ).remove_columns(dataset['train'].column_names)
     openai_format_dataset['train'].to_json("openai_format_dataset.jsonl", orient="records", lines=True)
     print(openai_format_dataset)
+    """
+    in LLaMA_FACTORY, DatasetInfo should be like this:
 
+    "openai_format_dataset": {
+        "file_name": "openai_format_dataset.jsonl",
+        "formatting": "openai",
+        "columns": {
+        "messages": "messages",
+        "tools": "tools"
+        },
+        "tags": {
+        "role_tag": "role",
+        "content_tag": "content",
+        "user_tag": "user",
+        "assistant_tag": "assistant",
+        "system_tag": "system",
+        "function_tag": "tool_calls"
+        }
+    }
+    """
 
     
