@@ -74,3 +74,8 @@ extra-index-url = ["https://pypi.org/simple"]
 [tool.setuptools]
 packages = { find = { where = ["src"] } }
 package-dir = { "" = "src" }
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.4.0",
+]

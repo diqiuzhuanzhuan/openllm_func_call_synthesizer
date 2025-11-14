@@ -104,12 +104,11 @@ def generate_query_dataset(cfg: DictConfig, function_docs: List[Dict]):
             for model in provider.models:
                 print(f"model: {model}")
                 # Instantiate generator with language
-                backend_params = provider.get('backend_params', {})
                 qg = QueryGenerator(
                     model_name=model,
-                    backend=provider.backend,
-                    backend_params=backend_params,
                     language=language,
+                    backend=provider.backend,
+                    backend_params=provider.backend_params,
                 )
                 # Generate records by iterating through examples and their variations
                 queries = qg(dataset=data)

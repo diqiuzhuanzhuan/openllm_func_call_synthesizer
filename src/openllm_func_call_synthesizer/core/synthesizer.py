@@ -110,9 +110,9 @@ class QueryGenerator(curator.LLM):
 
     return_completions_object = True
     
-    def __init__(self, model_name: str = None, backend: str = None, language: str = "English", backend_params: Dict = {}):
+    def __init__(self, model_name: str = None, backend: str = None, language: str = "English", **kwargs):
         """Initialize with optional language for generation."""
-        backend_params.update({"require_all_responses": False})
+        backend_params = dict().update(kwargs.get('backend_params', {}))
         super().__init__(model_name=model_name, backend=backend, backend_params=backend_params)
         self.language = language
 
