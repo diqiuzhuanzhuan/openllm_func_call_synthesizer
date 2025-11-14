@@ -89,7 +89,7 @@ prompt_file: "prompt_dict.json"  # JSON文件路径
 prompt_key: "mcp_system_prompt"  # JSON中的key名称
 
 # 如果不使用JSON文件，可以直接在这里写system_prompt
- 
+
 
 # # ========== 评测配置 ==========
 # # 是否进行评测 (已被steps.evaluate替代，保留兼容性)

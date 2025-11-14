@@ -36,7 +36,7 @@ Once you have a copy of the source, you can install it with:
 cd openllm_func_call_synthesizer
 uv pip install .
 ```
-or 
+or
 ```sh
 cd openllm_func_call_synthesizer
 uv sync

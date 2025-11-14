@@ -19,13 +19,20 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import hydra
-from omegaconf import DictConfig
 from pathlib import Path
 
-@hydra.main(version_base=None, config_path=str(Path(__file__).parent.parent.parent.parent / "examples" / "conf"), config_name="config")
+import hydra
+from omegaconf import DictConfig
+
+
+@hydra.main(
+    version_base=None,
+    config_path=str(Path(__file__).parent.parent.parent.parent / "examples" / "conf"),
+    config_name="config",
+)
 def main(cfg: DictConfig) -> None:
     print(cfg)
+
 
 if __name__ == "__main__":
     main()

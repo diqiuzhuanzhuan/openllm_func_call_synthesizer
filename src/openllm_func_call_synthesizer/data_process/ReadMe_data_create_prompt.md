@@ -1,4 +1,4 @@
-# react  data prompt:                    
+# react  data prompt:
 def react_prompt(self, input: Dict) -> str:
         """React-style prompt that uses tool descriptions and names."""
         # Format tool descriptions and extract tool names correctly

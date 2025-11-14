@@ -122,7 +122,7 @@ mcp_prompt: >
     * Slots:
       * `album_name`: the name of the album
       * `album_type`: the type of album. Default value: `normal` (choose from ["normal","face","baby","condition","object"])
-      * `search_query`: Search keyword or filter to find photos (e.g., 'beach', 'family', '2024 vacation'). 
+      * `search_query`: Search keyword or filter to find photos (e.g., 'beach', 'family', '2024 vacation').
 
     * required slot: `album_name`, `album_type`
 
@@ -145,7 +145,7 @@ mcp_prompt: >
         * `condition`: conditional album (e.g., "photos taken last October", "photos taken in Shanghai")
         * `object`: object album (e.g., "cat album", "dog album")
       * `keyword`: The search keyword for photos. It can be descriptive text or a file name, e.g., 'photos taken last August' or album named 'My Home'."
-    
+
     * Note: either `album_type` or `album_type` is required
 
   4. **music_play_control**: Play songs, albums, artists, playlists, and other music content.
@@ -197,7 +197,7 @@ mcp_prompt: >
         * `recent`: recently played
         * `favorites`: liked videos
         * `media_library`:videos in media library
-      
+
     * Note: either `title` or `source` is required.
     * Note: If the input does not explicitly mention the type [e.g., tv、movie、collection、电视剧、电影、合集、系列], type default to all.
 
@@ -216,7 +216,7 @@ mcp_prompt: >
         * `recent`: recently played
         * `favorites`: liked videos
         * `media_library`:videos in media library
-          
+
     * Note: either `title` or `source` is required.
     * Note: If the query does not explicitly mention the type [tv、movie、collection、电视剧、电影、合集、系列], type default to all.
 
@@ -225,7 +225,7 @@ mcp_prompt: >
     * Slots:
 
       * `system_type`: category of system or device information. Dafault `system`. Possible values:
-      
+
         * `system`：Control panel information / system info / basic information
         * `hardware`: CPU / memory
         * `device`: Device information/Device name / Device version/Device owner
@@ -239,13 +239,13 @@ system_prompt: >
   You are an NAS intent classifier. You need to accurately categorize the user's input into one of the following four intent categories.
 
   ### Intent Categories and Definitions
-  1. **general_query**: Questions about general knowledge or topics not related to NAS.  
+  1. **general_query**: Questions about general knowledge or topics not related to NAS.
     *Example*: "What is the capital of France?"
-  2. **summary_document**: Summarize the content of a document or report.  
+  2. **summary_document**: Summarize the content of a document or report.
     *Example*: "Summarize the quarterly report for me."
-  3. **search_document**: Locate specific documents or files based on keyword. Often includes terms like “document”, “file”, or “report”.  
+  3. **search_document**: Locate specific documents or files based on keyword. Often includes terms like “document”, “file”, or “report”.
     *Example*: "Find the 2023 financial report."
-  4. **translate**: Translate text or documents into a specified language.  
+  4. **translate**: Translate text or documents into a specified language.
     *Example*: "Translate the user manual into Spanish."
 
   response in json format:
@@ -257,10 +257,10 @@ system_prompt: >
   ```
 
   ### Examples
-  input: "Which country makes Casio watches?" → {"intent": "general_query", "slots": {}}  
-  input: "Summarize the main idea of this document." → {"intent": "summary_document", "slots": {}}  
-  input: "Find all files labeled 'update'." → {"intent": "search_document", "slots": {}}  
-  input: "Translate 'Hello' into English." → {"intent": "translate", "slots": {}} 
+  input: "Which country makes Casio watches?" → {"intent": "general_query", "slots": {}}
+  input: "Summarize the main idea of this document." → {"intent": "summary_document", "slots": {}}
+  input: "Find all files labeled 'update'." → {"intent": "search_document", "slots": {}}
+  input: "Translate 'Hello' into English." → {"intent": "translate", "slots": {}}
 
 
 # # ========== 评测配置 ==========

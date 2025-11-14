@@ -23,6 +23,6 @@
 # Remove invalid import or replace with the correct one if needed
 # For example, if you need to define custom exceptions, you can do so like this:
 class CustomException(Exception):
-	"""Custom exception for specific errors."""
-	pass
+    """Custom exception for specific errors."""
 
+    pass

@@ -21,9 +21,9 @@
 # SOFTWARE.
 
 from .synthesizer import (
+    ConversionGenerator,
     FunctionCallGenerator,
     QueryGenerator,
-    ConversionGenerator, 
 )
 
 __ALL__ = [

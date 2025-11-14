@@ -8,7 +8,7 @@ mcp_servers:
 query_generation:
   function_docs: examples/function_docs.json
 
-  languages: 
+  languages:
     - English
     - Chinese
     - Japanese
@@ -31,7 +31,7 @@ query_generation:
         - "gpt-4.5-preview"
       backend_params:
         max_concurrent_requests: 100
-        require_all_responses: False  
+        require_all_responses: False
 
     anthropic:
       backend: "openai"
@@ -40,7 +40,7 @@ query_generation:
         - "claude-sonnet-4-5-20250929"
       backend_params:
         max_concurrent_requests: 100
-        require_all_responses: False  
+        require_all_responses: False
 
     google:
       backend: "openai"
@@ -49,7 +49,7 @@ query_generation:
         - "gemini-2.5-pro-nothinking"
       backend_params:
         max_concurrent_requests: 100
-        require_all_responses: False  
+        require_all_responses: False
 
 
 
@@ -83,5 +83,5 @@ critic:
     model_name: "gpt-5-mini-2025-08-07"
     backend: "openai"
     backend_params:
-      require_all_responses: False  
+      require_all_responses: False
       max_concurrent_requests: 100

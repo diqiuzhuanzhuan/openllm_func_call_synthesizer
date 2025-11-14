@@ -20,25 +20,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Dict, List, Optional
 from dataclasses import dataclass
 
-@dataclass 
+
+@dataclass
 class ParameterSchema:
     """Schema for function parameters"""
+
     type: str
     description: str
     required: bool = False
-    enum: Optional[List] = None
-    format: Optional[str] = None
-    examples: Optional[List] = None
+    enum: list | None = None
+    format: str | None = None
+    examples: list | None = None
 
-    
+
 @dataclass
 class FunctionSchema:
     """Schema definition for functions"""
+
     name: str
     description: str
-    parameters: Dict[str, ParameterSchema]
-    examples: Optional[List[Dict]]
-    metadata: Optional[Dict]
+    parameters: dict[str, ParameterSchema]
+    examples: list[dict] | None
+    metadata: dict | None

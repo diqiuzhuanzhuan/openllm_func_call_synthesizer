@@ -21,13 +21,13 @@
 # SOFTWARE.
 
 import json
-from xxhash import xxh64
-from typing import Dict, List
-from datasets import Dataset
+
 from bespokelabs import curator
-from openllm_func_call_synthesizer.utils import extract_format
-from bespokelabs.curator.log import add_file_handler, logger
+from bespokelabs.curator.log import logger
 from rich import pretty
+from xxhash import xxh64
+
+from openllm_func_call_synthesizer.utils import extract_format
 
 
 class FunctionCallGenerator(curator.LLM):
@@ -35,21 +35,21 @@ class FunctionCallGenerator(curator.LLM):
 
     return_completions_object = True
 
-    def _format_functions(self, functions: List[str]) -> str:
+    def _format_functions(self, functions: list[str]) -> str:
         """Format a list of function definitions into a human-readable block."""
         funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
         return "\n\n".join(funcs)
 
-    def prompt(self, input: Dict) -> str:
+    def prompt(self, input: dict) -> str:
         """The prompt is used to generate the function call."""
         # Prepare a readable listing of available functions
         return f"""
         You are an expert in structured function calling.
         The user request is:
-        {input['query']}
+        {input["query"]}
         """
-    
-    def _parse_function_call(self, raw_output: Dict) -> Dict:  
+
+    def _parse_function_call(self, raw_output: dict) -> dict:
         parsed = []
         for call in raw_output:
             func = call.get("function", {})
@@ -58,43 +58,42 @@ class FunctionCallGenerator(curator.LLM):
                 args = json.loads(func.get("arguments", "{}"))
             except json.JSONDecodeError:
                 args = func.get("arguments", {})  # fallback
-            parsed.append({
-                "name": name,
-                "arguments": args
-            })
+            parsed.append({"name": name, "arguments": args})
 
         return json.dumps(parsed, ensure_ascii=False, indent=2)
 
-    def parse(self, input: Dict, response) -> Dict:
+    def parse(self, input: dict, response) -> dict:
         """Parse the response to extract the function call or the message."""
-        input['prompt'] = self.prompt(input)
+        input["prompt"] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
-            input['answer'] = response["choices"][0]["message"]
+            input["answer"] = response["choices"][0]["message"]
 
         else:
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             if function_call is None:
-                input['answer'] = response["choices"][0]["message"]
-                input['function_call'] = None
-                #raise ValueError("The model did not return a valid function call.")
+                input["answer"] = response["choices"][0]["message"]
+                input["function_call"] = None
+                # raise ValueError("The model did not return a valid function call.")
             else:
-                input['function_call'] = json.dumps(function_call, ensure_ascii=False)
-                input['answer'] = response["choices"][0]["message"]
+                input["function_call"] = json.dumps(function_call, ensure_ascii=False)
+                input["answer"] = response["choices"][0]["message"]
 
         pretty.pprint("query: ")
-        pretty.pprint(input['query'])
+        pretty.pprint(input["query"])
         if "answer" in input:
             pretty.pprint("answer: ")
-            pretty.pprint(input['answer'])
+            pretty.pprint(input["answer"])
         if "function_call" in input:
             pretty.pprint("function_call: ")
-            pretty.pprint(input['function_call'])
+            pretty.pprint(input["function_call"])
 
         return input
 
+
 from pydantic import BaseModel, Field
+
 
 class QueryFunc(BaseModel):
     query: str = Field(..., description="The natural language query")
@@ -102,28 +101,31 @@ class QueryFunc(BaseModel):
     dimension: str = Field(..., description="The variation dimension")
     language: str = Field(..., description="The query language")
 
+
 class QueryFuncItem(BaseModel):
     item: QueryFunc = Field(..., description="The query function item")
+
 
 class QueryGenerator(curator.LLM):
     """A simple query generator."""
 
     return_completions_object = True
-    
+
     def __init__(self, model_name: str = None, backend: str = None, language: str = "English", **kwargs):
         """Initialize with optional language for generation."""
-        backend_params = dict().update(kwargs.get('backend_params', {}))
+        backend_params = dict().update(kwargs.get("backend_params", {}))
         super().__init__(model_name=model_name, backend=backend, backend_params=backend_params)
         self.language = language
 
     def _hash_fingerprint(self, dataset_hash: str = "", disable_cache: bool = False):
         from xxhash import xxh64
+
         fingerprint = super()._hash_fingerprint(dataset_hash, disable_cache)
         fingerprint = f"{fingerprint}_{xxh64(self.language.encode('utf-8')).hexdigest()}"
         logger.info(f"Curator Cache Fingerprint: {fingerprint}")
         return fingerprint
 
-    def prompt(self, input: Dict) -> str:
+    def prompt(self, input: dict) -> str:
         """The prompt is used to generate the query."""
         print(input)
         return f"""You are a query expansion system generating queries in {self.language}.
@@ -138,8 +140,8 @@ Generate **15–20** realistic, conversational, and semantically equivalent user
 
 ### 🧩 Input
 - Language: {self.language}
-- Seed Query (optional): {input.get('query', None)}
-- Function Information: {input['function']}
+- Seed Query (optional): {input.get("query", None)}
+- Function Information: {input["function"]}
 
 ---
 
@@ -219,43 +221,42 @@ Use strict JSON format like this:
 ```
 """
 
-    def parse(self, input: Dict, response) -> List[Dict]:
+    def parse(self, input: dict, response) -> list[dict]:
         """Parse the response to extract the query."""
 
-        query = extract_format(format='json', content=response["choices"][0]["message"]["content"])
-        function_hash = xxh64(str(input['function']).encode('utf-8')).hexdigest()
+        query = extract_format(format="json", content=response["choices"][0]["message"]["content"])
+        function_hash = xxh64(str(input["function"]).encode("utf-8")).hexdigest()
         # Build a list of query variation records with metadata
         output = [
             {
-                'query': ele['query'],
-                'dimension': ele['dimension'],
-                'language': self.language,
-                'function': input['function'],
-                'function_hash': function_hash,
+                "query": ele["query"],
+                "dimension": ele["dimension"],
+                "language": self.language,
+                "function": input["function"],
+                "function_hash": function_hash,
             }
-            for ele in query['variations']
+            for ele in query["variations"]
         ]
         return output
 
-        
+
 class ConversionGenerator(curator.LLM):
     """A simple conversion generator."""
 
     return_completions_object = True
 
-    def prompt(self, input: Dict) -> str:
+    def prompt(self, input: dict) -> str:
         """The prompt is used to generate the conversion."""
         return f"""You are a conversion generation expert. Given the user request:
-        {input['user_request']}.
+        {input["user_request"]}.
         Generate a conversion that can be used to satisfy the user request.
         """
 
-    def parse(self, input: Dict, response) -> Dict:
+    def parse(self, input: dict, response) -> dict:
         """Parse the response to extract the conversion."""
         input["conversion"] = response["choices"][0]["message"]["content"]
         return input
 
 
 if __name__ == "__main__":
-    
     qg = QueryGenerator()

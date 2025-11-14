@@ -21,7 +21,9 @@
 # SOFTWARE.
 
 from pathlib import Path
+
 from openllm_func_call_synthesizer.utils import read_yaml
+
 
 def load_config(path: Path) -> dict:
     """Load config from path"""

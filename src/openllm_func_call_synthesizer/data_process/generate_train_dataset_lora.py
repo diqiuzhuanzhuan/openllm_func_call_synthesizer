@@ -1,21 +1,23 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 # # 训练数据生成
 
 # In[2]:
 
 
-import pandas as pd
 import json
 import sys
-sys.path.append('/data0/work/SusieSu/project')
+
+import pandas as pd
+
+sys.path.append("/data0/work/SusieSu/project")
 from Call_LLM_Utils.read_file_util import *
 
 # root = '/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/lora_train_data/react_data/'
-root = '/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/lora_train_data/v0_data/'
+root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/lora_train_data/v0_data/"
 input_file_name = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/function_call_0919/voted_function_call_rs_0919_3models.xlsx"
 KEY_PROMPT = "v0"  # v0 react
+
 
 def value_counts(df, key_column):
     # 计算计数和占比
@@ -23,25 +25,23 @@ def value_counts(df, key_column):
     proportions = df[key_column].value_counts(normalize=True)
 
     # 合并为 DataFrame
-    result = pd.DataFrame({
-        'count': counts,
-        'proportion': proportions,
-    }).reset_index()
+    result = pd.DataFrame(
+        {
+            "count": counts,
+            "proportion": proportions,
+        }
+    ).reset_index()
 
     # 重命名列
-    result.columns = [key_column, 'count', 'proportion']
+    result.columns = [key_column, "count", "proportion"]
 
     # 可选：保留两位小数
-    result['proportion'] = result['proportion'].apply(lambda x: f"{x * 100:.2f}%")
+    result["proportion"] = result["proportion"].apply(lambda x: f"{x * 100:.2f}%")
 
-    total_count = result['count'].sum()
+    total_count = result["count"].sum()
 
     # 添加总计行
-    total_row = pd.DataFrame({
-        key_column: ['Total'],
-        'count': [total_count],
-        'proportion': ['100%']
-    })
+    total_row = pd.DataFrame({key_column: ["Total"], "count": [total_count], "proportion": ["100%"]})
 
     # 合并结果
     result = pd.concat([result, total_row], ignore_index=True)
@@ -49,7 +49,8 @@ def value_counts(df, key_column):
     # print(result)
     return result
 
-def read_excel(path, sheet_name = None):
+
+def read_excel(path, sheet_name=None):
     if sheet_name != None:
         df = pd.read_excel(path)
         print(df.shape)
@@ -61,8 +62,9 @@ def read_excel(path, sheet_name = None):
 
     return df
 
-import json
+
 import os
+
 
 def read_json_file(file_path):
     """
@@ -73,7 +75,7 @@ def read_json_file(file_path):
     try:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"文件 {file_path} 不存在")
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
         print("JSON 文件读取成功")
         return data
@@ -95,19 +97,19 @@ df
 # In[5]:
 
 
-df.iloc[111]['voted_function_call']
+df.iloc[111]["voted_function_call"]
 
 
 # In[6]:
 
 
-eval(df.iloc[111]['model_function_calls'])
+eval(df.iloc[111]["model_function_calls"])
 
 
 # In[7]:
 
 
-df = df.drop_duplicates(subset='query', inplace=False)
+df = df.drop_duplicates(subset="query", inplace=False)
 df.shape
 
 
@@ -376,7 +378,7 @@ Tool Description: Control music app settings
 Tool Args: {"type": "object", "properties": {"auto_stop_time": {"type": "number", "description": "Set sleep timer duration, for example, stop playback after 15 minutes"}}, "required": ["auto_stop_time"], "additionalProperties": false}
 
 > Tool Name: video_search_control
-Tool Description: Video search tool: search TV series, movies, and other video content. 
+Tool Description: Video search tool: search TV series, movies, and other video content.
 Tool Args: {"type": "object", "properties": {"title": {"type": "string", "description": "Name or title of the video content, supports fuzzy matching."}, "type": {"type": "string", "enum": ["tv", "movie", "collection"], "description": "Content type: tv=TV series/drama, movie=films/blockbusters, collection=movie series/collections."}}, "required": ["title"], "additionalProperties": false}
 
 > Tool Name: video_play_control
@@ -402,7 +404,7 @@ Please ALWAYS start with a Thought.
 NEVER surround your response with markdown code markers. You may use code markers within your response if you need to.
 
 Below is the user's request:
-        
+
 """
 
 system_prompt_dict = {"v0": system_prompt_v0, "react": react_system_prompt}
@@ -415,8 +417,7 @@ user_prompt = """Below is the user's request:
 {query}"""
 
 
-df = df[['query', 'model_function_calls', 'voted_function_call',
-        'language']]
+df = df[["query", "model_function_calls", "voted_function_call", "language"]]
 
 
 # In[12]:
@@ -429,19 +430,17 @@ df
 
 
 lora_input_list = []
-for i , df_0 in df.iterrows():
+for i, df_0 in df.iterrows():
     df_ = df_0.to_dict()
-    lora_input_list.append({
-        "instruction": system_prompt,
-        "input": df_.get('query', ""),
-        "output": str(df_.get('voted_function_call', ""))
-    })
+    lora_input_list.append(
+        {"instruction": system_prompt, "input": df_.get("query", ""), "output": str(df_.get("voted_function_call", ""))}
+    )
 
 
 # In[14]:
 
 
-df['lora_input_list'] = lora_input_list
+df["lora_input_list"] = lora_input_list
 
 
 # In[15]:
@@ -453,19 +452,19 @@ df
 # In[16]:
 
 
-print(df.iloc[1]['lora_input_list'].get('input'))
+print(df.iloc[1]["lora_input_list"].get("input"))
 
 
 # In[17]:
 
 
-print(df.iloc[1]['lora_input_list'].get('output'))
+print(df.iloc[1]["lora_input_list"].get("output"))
 
 
 # In[18]:
 
 
-print(df.iloc[1]['lora_input_list'].get('instruction'))
+print(df.iloc[1]["lora_input_list"].get("instruction"))
 
 
 # In[19]:
@@ -477,7 +476,7 @@ df.shape
 # In[20]:
 
 
-df.to_excel(root + 'to_lora_raw_data.xlsx')
+df.to_excel(root + "to_lora_raw_data.xlsx")
 
 
 # In[21]:
@@ -492,6 +491,7 @@ df
 
 
 from sklearn.model_selection import train_test_split
+
 # df = df2.copy()
 # 第一步：将数据分为训练集和临时集（包含 dev + test）
 train_df, temp_df = train_test_split(df, test_size=0.2, random_state=2025)
@@ -516,19 +516,19 @@ train_df.shape, dev_df.shape, test_df.shape
 # In[24]:
 
 
-train_df.iloc[1]['lora_input_list']
+train_df.iloc[1]["lora_input_list"]
 
-train_df.to_excel(root + 'train_all.xlsx')
-dev_df.to_excel(root + 'dev_all.xlsx')
-test_df.to_excel(root + 'test_all.xlsx')
+train_df.to_excel(root + "train_all.xlsx")
+dev_df.to_excel(root + "dev_all.xlsx")
+test_df.to_excel(root + "test_all.xlsx")
 
 
 # In[26]:
 
 
-lora_input_list_train = train_df['lora_input_list'].to_list()
-lora_input_list_dev = dev_df['lora_input_list'].to_list()
-lora_input_list_test = test_df['lora_input_list'].to_list()
+lora_input_list_train = train_df["lora_input_list"].to_list()
+lora_input_list_dev = dev_df["lora_input_list"].to_list()
+lora_input_list_test = test_df["lora_input_list"].to_list()
 
 
 # In[27]:
@@ -546,21 +546,21 @@ lora_input_list_train
 # In[29]:
 
 
-with open(root + 'mcp_train.json', 'w') as fin:
+with open(root + "mcp_train.json", "w") as fin:
     json.dump(lora_input_list_train, fin, ensure_ascii=False, indent=2)
 
 
 # In[30]:
 
 
-with open(root + 'mcp_dev.json', 'w') as fin2:
+with open(root + "mcp_dev.json", "w") as fin2:
     json.dump(lora_input_list_dev, fin2, ensure_ascii=False, indent=2)
 
 
 # In[31]:
 
 
-with open(root + 'mcp_test.json', 'w') as fin3:
+with open(root + "mcp_test.json", "w") as fin3:
     json.dump(lora_input_list_test, fin3, ensure_ascii=False, indent=2)
 
 
@@ -568,4 +568,3 @@ with open(root + 'mcp_test.json', 'w') as fin3:
 
 
 len(lora_input_list)
-

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 """
 LLM API调用模块
@@ -7,55 +6,42 @@ LLM API调用模块
 """
 
 import json
-import time
-import requests
-import pandas as pd
 import re
-import yaml
+import time
+
+import pandas as pd
+import requests
 from parse_response_to_json import parse_react_to_json
+
 
 def filter_think(text):
     try:
-        rs = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+        rs = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         return rs.strip()
     except Exception:
         return text.strip()
 
-def get_llm_response_api(
-    text,
-    system_prompt,
-    api_url,
-    model_name,
-    temperature=0.01
-    ):
+
+def get_llm_response_api(text, system_prompt, api_url, model_name, temperature=0.01):
     """
     使用API方式调用LLM
     """
     begin_time = time.time()
 
-    payload = json.dumps({
-        "model": model_name,
-        "stream": False,
-        "temperature": temperature,
-        "messages": [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": text
-            }
-        ]
-    })
-    headers = {
-        'Content-Type': 'application/json'
-    }
+    payload = json.dumps(
+        {
+            "model": model_name,
+            "stream": False,
+            "temperature": temperature,
+            "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": text}],
+        }
+    )
+    headers = {"Content-Type": "application/json"}
 
     try:
         response = requests.request("POST", api_url, headers=headers, data=payload)
         if response.status_code == 200:
-            generated_text = json.loads(response.text).get("message", {}).get('content', {})
+            generated_text = json.loads(response.text).get("message", {}).get("content", {})
             generated_text = filter_think(generated_text)
             end_time = time.time()
             print(f"[INFO] API调用成功，耗时: {end_time - begin_time:.2f} 秒")
@@ -66,6 +52,7 @@ def get_llm_response_api(
     except Exception as e:
         print(f"[ERROR] API调用异常: {e}")
         return None
+
 
 def parse_llm_response(rsp):
     """
@@ -88,11 +75,12 @@ def parse_llm_response(rsp):
 def extract_intent(x):
     """从output字段中提取intent"""
     if pd.isna(x):
-        return ''
+        return ""
     try:
         if isinstance(x, str):
-            import json
             import ast
+            import json
+
             try:
                 parsed = json.loads(x)
             except:
@@ -100,10 +88,10 @@ def extract_intent(x):
         else:
             parsed = x
         if isinstance(parsed, dict):
-            return parsed.get('intent', '')
-    except Exception as e:
-        return ''
-    return ''
+            return parsed.get("intent", "")
+    except Exception:
+        return ""
+    return ""
 
 
 def preprocess_data(df, config):
@@ -115,17 +103,18 @@ def preprocess_data(df, config):
     Returns:
         处理后的DataFrame
     """
-    input_field = config['input_field']
-    ground_truth_field = config.get('ground_truth', 'output')
-    
+    input_field = config["input_field"]
+    ground_truth_field = config.get("ground_truth", "output")
+
     # 创建两个输入列（API模式不需要拼接system_prompt，在请求时拼接）
-    df['mcp_input'] = df[input_field].astype(str)
-    df['uliya_input'] = df[input_field].astype(str)
-    
+    df["mcp_input"] = df[input_field].astype(str)
+    df["uliya_input"] = df[input_field].astype(str)
+
     # 提取 gt_intent
-    df['gt_intent'] = df[ground_truth_field].apply(extract_intent)
-    
+    df["gt_intent"] = df[ground_truth_field].apply(extract_intent)
+
     return df
+
 
 def batch_llm_predict_api(config):
     """
@@ -146,25 +135,26 @@ def batch_llm_predict_api(config):
     Returns:
         DataFrame
     """
-    print('------begin time (API)------', time.strftime("%Y-%m-%d %H:%M:%S"))
-    
+    print("------begin time (API)------", time.strftime("%Y-%m-%d %H:%M:%S"))
+
     # 读取数据并预处理
-    df = pd.read_excel(config['input_file'])
+    df = pd.read_excel(config["input_file"])
     df = df.iloc[0:30]
     df = preprocess_data(df, config)
-    
+
     # 获取模式配置
-    mode = config.get('mode', 'hybrid')
+    mode = config.get("mode", "hybrid")
     print(f"Running in {mode} mode")
-    
+
     # 初始化 pandarallel
     from pandarallel import pandarallel
+
     pandarallel.initialize()
-    
+
     # 定义API调用函数
-    api_url = config.get('api_url', 'http://192.168.111.3:11434/api/chat')
-    model_name = config.get('model_name')
-    
+    api_url = config.get("api_url", "http://192.168.111.3:11434/api/chat")
+    model_name = config.get("model_name")
+
     def run_one(text, system_prompt):
         return get_llm_response_api(
             text=text,
@@ -172,72 +162,88 @@ def batch_llm_predict_api(config):
             api_url=api_url,
             model_name=model_name,
         )
-    
+
     # 根据模式执行推理
-    if mode == 'hybrid':
+    if mode == "hybrid":
         df = _run_hybrid_mode_api(df, run_one, config)
-    elif mode == 'split':
+    elif mode == "split":
         df = _run_split_mode_api(df, run_one, config)
     else:
         raise ValueError(f"Unsupported mode: {mode}. Choose 'hybrid' or 'split'.")
 
     # 保存结果
-    df.to_excel(config['output_file'], index=False)
-    print("API LLM inference done, result saved:", config['output_file'])
-    print('------end time (API)------', time.strftime("%Y-%m-%d %H:%M:%S"))
+    df.to_excel(config["output_file"], index=False)
+    print("API LLM inference done, result saved:", config["output_file"])
+    print("------end time (API)------", time.strftime("%Y-%m-%d %H:%M:%S"))
     return df
 
 
 def _run_hybrid_mode_api(df, run_one, config):
     """API混合模式：先用 mcp 请求，如果没有结果，再用 uliya 请求"""
-    print("Using hybrid mode: trying mcp with system_prompt_mcp first, then uliya with system_prompt_uliya if no result")
-    
-    system_prompt_mcp = config.get('system_prompt_mcp', '')
-    system_prompt_uliya = config.get('system_prompt_uliya', '')
-    
+    print(
+        "Using hybrid mode: trying mcp with system_prompt_mcp first, then uliya with system_prompt_uliya if no result"
+    )
+
+    system_prompt_mcp = config.get("system_prompt_mcp", "")
+    system_prompt_uliya = config.get("system_prompt_uliya", "")
+
     # 第一轮：用 mcp
-    df['llm_response_ori_mcp'] = df['mcp_input'].apply(lambda x: run_one(x, system_prompt_mcp))
-    df['llm_response_mcp'] = df['llm_response_ori_mcp'].apply(parse_llm_response)
-    
+    df["llm_response_ori_mcp"] = df["mcp_input"].apply(lambda x: run_one(x, system_prompt_mcp))
+    df["llm_response_mcp"] = df["llm_response_ori_mcp"].apply(parse_llm_response)
+
     # 检查哪些需要用 uliya
     def need_uliya_check(result):
         if isinstance(result, dict):
-            if result.get('intent', '') in ['', 'unknown']:
+            if result.get("intent", "") in ["", "unknown"]:
                 return True
         elif isinstance(result, str) and not result.strip():
             return True
         elif not result:
             return True
         return False
-    
-    df['need_uliya'] = df['llm_response_mcp'].apply(need_uliya_check)
-    
+
+    df["need_uliya"] = df["llm_response_mcp"].apply(need_uliya_check)
+
     # 第二轮：对需要的行用 uliya
-    uliya_rows = df[df['need_uliya']]
+    uliya_rows = df[df["need_uliya"]]
     if len(uliya_rows) > 0:
         print(f"Re-running {len(uliya_rows)} rows with uliya_input and system_prompt_uliya")
-        df.loc[df['need_uliya'], 'llm_response_ori_uliya'] = uliya_rows['uliya_input'].apply(lambda x: run_one(x, system_prompt_uliya))
-        df.loc[df['need_uliya'], 'llm_response_uliya'] = df.loc[df['need_uliya'], 'llm_response_ori_uliya'].apply(parse_llm_response)
-        
+        df.loc[df["need_uliya"], "llm_response_ori_uliya"] = uliya_rows["uliya_input"].apply(
+            lambda x: run_one(x, system_prompt_uliya)
+        )
+        df.loc[df["need_uliya"], "llm_response_uliya"] = df.loc[df["need_uliya"], "llm_response_ori_uliya"].apply(
+            parse_llm_response
+        )
+
         # 合并结果：如果需要uliya则用uliya的结果，否则用mcp的结果
-        df['llm_response_ori'] = df.apply(lambda row: row['llm_response_ori_uliya'] if row['need_uliya'] and pd.notna(row.get('llm_response_ori_uliya')) else row['llm_response_ori_mcp'], axis=1)
-        df['llm_response'] = df.apply(lambda row: row['llm_response_uliya'] if row['need_uliya'] and pd.notna(row.get('llm_response_uliya')) else row['llm_response_mcp'], axis=1)
+        df["llm_response_ori"] = df.apply(
+            lambda row: row["llm_response_ori_uliya"]
+            if row["need_uliya"] and pd.notna(row.get("llm_response_ori_uliya"))
+            else row["llm_response_ori_mcp"],
+            axis=1,
+        )
+        df["llm_response"] = df.apply(
+            lambda row: row["llm_response_uliya"]
+            if row["need_uliya"] and pd.notna(row.get("llm_response_uliya"))
+            else row["llm_response_mcp"],
+            axis=1,
+        )
     else:
-        df['llm_response_ori'] = df['llm_response_ori_mcp']
-        df['llm_response'] = df['llm_response_mcp']
-    
+        df["llm_response_ori"] = df["llm_response_ori_mcp"]
+        df["llm_response"] = df["llm_response_mcp"]
+
     return df
 
 
 def _run_split_mode_api(df, run_one, config):
     """API分割模式：根据 gt_intent 选择对应的 prompt"""
     print("Using split mode: selecting prompt based on gt_intent")
-    
-    system_prompt_mcp = config.get('system_prompt_mcp', '')
-    system_prompt_uliya = config.get('system_prompt_uliya', '')
-    mcp_intent_list = config.get('mcp_intent_list', [])
-    uliya_intent_list = config.get('uliya_intent_list', [])
-    
+
+    system_prompt_mcp = config.get("system_prompt_mcp", "")
+    system_prompt_uliya = config.get("system_prompt_uliya", "")
+    mcp_intent_list = config.get("mcp_intent_list", [])
+    uliya_intent_list = config.get("uliya_intent_list", [])
+
     def select_system_prompt(intent):
         if intent in mcp_intent_list:
             return system_prompt_mcp
@@ -247,15 +253,19 @@ def _run_split_mode_api(df, run_one, config):
             # 如果不在任何列表中，默认使用 mcp
             print(f"Intent '{intent}' not in any list, using system_prompt_mcp by default")
             return system_prompt_mcp
-    
-    df['selected_system_prompt'] = df['gt_intent'].apply(select_system_prompt)
-    df['selected_input'] = df.apply(lambda row: row['mcp_input'] if row['selected_system_prompt'] == system_prompt_mcp else row['uliya_input'], axis=1)
-    
+
+    df["selected_system_prompt"] = df["gt_intent"].apply(select_system_prompt)
+    df["selected_input"] = df.apply(
+        lambda row: row["mcp_input"] if row["selected_system_prompt"] == system_prompt_mcp else row["uliya_input"],
+        axis=1,
+    )
+
     # 使用选定的 system_prompt 进行推理
-    df['llm_response_ori'] = df.apply(lambda row: run_one(row['selected_input'], row['selected_system_prompt']), axis=1)
-    df['llm_response'] = df['llm_response_ori'].apply(parse_llm_response)
-    
+    df["llm_response_ori"] = df.apply(lambda row: run_one(row["selected_input"], row["selected_system_prompt"]), axis=1)
+    df["llm_response"] = df["llm_response_ori"].apply(parse_llm_response)
+
     return df
+
 
 def main():
     # 单条测试
@@ -380,28 +390,28 @@ Please strictly follow the output requirements below:
 You are an NAS intent classifier. You need to accurately categorize the user's input into one of the following five intent categories. **Only output the category name**, and reply in English.
 
 ### Intent Categories and Definitions
-1. **general_knowledge_query**: Questions about general knowledge or topics not related to NAS.  
+1. **general_knowledge_query**: Questions about general knowledge or topics not related to NAS.
    *Example*: "What is the capital of France?"
-2. **search_photos**: Search for photos or images based on content, tags, or keywords. Typically includes words like “picture”, “photo”, or “image”.  
+2. **search_photos**: Search for photos or images based on content, tags, or keywords. Typically includes words like “picture”, “photo”, or “image”.
    *Example*: "Find photos from my beach vacation."
-3. **summary_document**: Summarize the content of a document or report.  
+3. **summary_document**: Summarize the content of a document or report.
    *Example*: "Summarize the quarterly report for me."
-4. **search_document**: Locate specific documents or files based on keywords. Often includes terms like “document”, “file”, or “report”.  
+4. **search_document**: Locate specific documents or files based on keywords. Often includes terms like “document”, “file”, or “report”.
    *Example*: "Find the 2023 financial report."
-5. **translate**: Translate text or documents into a specified language.  
+5. **translate**: Translate text or documents into a specified language.
    *Example*: "Translate the user manual into Spanish."
 
 ### Examples
-input: "Which country makes Casio watches?" → general_knowledge_query  
-input: "Translate 'Hello' into English." → translate_text  
-input: "Search for photos of the sky." → search_photos  
-input: "Find all files labeled 'update'." → search_document  
-input: "Summarize the main idea of this document." → summary_document  
+input: "Which country makes Casio watches?" → general_knowledge_query
+input: "Translate 'Hello' into English." → translate_text
+input: "Search for photos of the sky." → search_photos
+input: "Find all files labeled 'update'." → search_document
+input: "Summarize the main idea of this document." → summary_document
 
 User input:
 
 """
-    system_prompt = system_prompt_mcp  #system_prompt_5intent  # fallback
+    system_prompt = system_prompt_mcp  # system_prompt_5intent  # fallback
 
     API_URL = "http://192.168.111.3:11434/api/chat"
     model_name = "mcp_intent_1016:f16"
@@ -409,13 +419,12 @@ User input:
     for input_text in input_ls:
         try:
             rsp = get_llm_response_api(
-                text=input_text,
-                system_prompt=system_prompt,
-                api_url=API_URL,
-                model_name=model_name)
+                text=input_text, system_prompt=system_prompt, api_url=API_URL, model_name=model_name
+            )
             print("单条调用结果：", rsp)
         except Exception as e:
             print("单条API调用异常：", e)
+
 
 if __name__ == "__main__":
     main()

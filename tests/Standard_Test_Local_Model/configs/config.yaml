@@ -124,7 +124,7 @@ system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthes
 
 
 # 如果不使用JSON文件，可以直接在这里写system_prompt
- 
+
 
 # # ========== 评测配置 ==========
 # # 是否进行评测 (已被steps.evaluate替代，保留兼容性)

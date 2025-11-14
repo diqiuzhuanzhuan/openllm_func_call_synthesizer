@@ -1,46 +1,43 @@
-import pandas as pd
 import json
+
+import pandas as pd
 
 
 def test_one_response(messages):
     import os
+
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4,5"
-    import re
-    import json
+
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    import time
-    import pandas as pd
 
     root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_dataprocess_1025/train_datas_1025"
-    model_name = "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
+    model_name = (
+        "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
+    )
 
     # load the tokenizer and the models
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype="auto",
-        device_map="auto"
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 
     text = tokenizer.apply_chat_template(
         messages["messages"],
         tools=messages["functions"],
         tokenize=False,
         add_generation_prompt=True,
-        enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
+        enable_thinking=True,  # Switches between thinking and non-thinking modes. Default is True.
     )
     print(text)
 
-import pandas as pd
-import json
+
 import ast
 import re
 
-with open('/data0/work/SusieSu/project/uliya/mcp/function_docs.json', 'r') as f:
+with open("/data0/work/SusieSu/project/uliya/mcp/function_docs.json") as f:
     fun_ = json.load(f)
 
-FUNCTIONS = fun_['tools']
+FUNCTIONS = fun_["tools"]
 FUNCTIONS = json.dumps(FUNCTIONS)
+
 
 def parse_function_call(fc_raw):
     """
@@ -94,15 +91,13 @@ def parse_function_call(fc_raw):
             tc = {
                 "id": f"call_{idx}",
                 "type": "function",
-                "function": {
-                    "name": name,
-                    "arguments": json.dumps(arguments, ensure_ascii=False)  
-                }
+                "function": {"name": name, "arguments": json.dumps(arguments, ensure_ascii=False)},
             }
             tool_calls.append(tc)
     if not tool_calls:
         return []
     return tool_calls
+
 
 def get_answer_content(answer):
     try:
@@ -111,7 +106,7 @@ def get_answer_content(answer):
             # 先尝试用ast.literal_eval解析
             try:
                 ans_obj = ast.literal_eval(answer)
-            except Exception as e:
+            except Exception:
                 # print("ast.literal_eval error:", e)
                 # 如果失败但answer像字典字符串，则用正则取content字段
                 m = re.search(r"'content'\s*:\s*([\"'])(.*?)\1", answer)
@@ -140,13 +135,14 @@ def get_answer_content(answer):
 
     return content_val
 
+
 def make_message_row_simple(row):
     """
     构造给定行的 chat message 格式，支持function_call转为tool_calls
     """
     messages = [
-        {"role": "system", "content": "You are a helpful assistant that can call tools.",  "loss_weight": 0.0},
-        {"role": "user", "content": str(row["query"]) if pd.notnull(row.get("query")) else "",  "loss_weight": 0.0}
+        {"role": "system", "content": "You are a helpful assistant that can call tools.", "loss_weight": 0.0},
+        {"role": "user", "content": str(row["query"]) if pd.notnull(row.get("query")) else "", "loss_weight": 0.0},
     ]
 
     has_fc = pd.notnull(row.get("function_call")) and str(row["function_call"]).strip() != ""
@@ -154,44 +150,37 @@ def make_message_row_simple(row):
     if has_fc:
         # 用function_call生成tool_calls
         tool_calls = parse_function_call(row["function_call"])
-        assistant_msg = {
-            "role": "assistant",
-            "content": "",
-            "tool_calls": tool_calls,
-            "loss_weight": 1.0
-        }
+        assistant_msg = {"role": "assistant", "content": "", "tool_calls": tool_calls, "loss_weight": 1.0}
     else:
         answer_content = get_answer_content(row.get("answer"))
-        assistant_msg = {
-            "role": "assistant",
-            "content": answer_content,
-            "tool_calls": [],
-            "loss_weight": 1.0
-        }
+        assistant_msg = {"role": "assistant", "content": answer_content, "tool_calls": [], "loss_weight": 1.0}
 
     messages.append(assistant_msg)
 
-    return {"messages": messages,
-    "functions": FUNCTIONS
-    }
+    return {"messages": messages, "functions": FUNCTIONS}
+
 
 if __name__ == "__main__":
-    df = pd.read_csv("/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_critic_1112_v2/output.csv")
+    df = pd.read_csv(
+        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_critic_1112_v2/output.csv"
+    )
     print(df.shape, df.columns)
-    print(df['score'].value_counts().sort_index(ascending=False))
-    df_none= df[df['function_call'].isnull() | (df['function_call'].astype(str).str.strip() == '')]
-    print('df_none.shape', df_none.shape)
-    
-    # 应用到df，加到新的一列里
-    df = df.drop_duplicates(subset=['query'])
-    print('dedup df.shape', df.shape)
+    print(df["score"].value_counts().sort_index(ascending=False))
+    df_none = df[df["function_call"].isnull() | (df["function_call"].astype(str).str.strip() == "")]
+    print("df_none.shape", df_none.shape)
 
-    df = df[df['score'] > 4]
-    print('score > 4 df.shape', df.shape)
+    # 应用到df，加到新的一列里
+    df = df.drop_duplicates(subset=["query"])
+    print("dedup df.shape", df.shape)
+
+    df = df[df["score"] > 4]
+    print("score > 4 df.shape", df.shape)
 
     df["lora_input"] = df.apply(make_message_row_simple, axis=1)
 
     for i in range(2):
         print(json.dumps(df.iloc[i]["lora_input"], ensure_ascii=False, indent=2))
 
-    df.to_excel("/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2/function_call_for_train_1112.xlsx")
+    df.to_excel(
+        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2/function_call_for_train_1112.xlsx"
+    )
