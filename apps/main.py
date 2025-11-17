@@ -23,6 +23,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import List
 
 import hydra
 from datasets import concatenate_datasets, load_dataset
@@ -203,8 +204,7 @@ def critic_function_call_dataset(cfg: DictConfig):
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
 
-def choose_tools(openai_format_tools):
-    target_names = ["search_photos", "create_album"]
+def choose_tools(openai_format_tools, target_names: List[str] = ['search_photos', 'create_album']):
     # target_names = ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
 
     # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
@@ -233,7 +233,8 @@ def main(cfg: DictConfig):
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
     # choose part tools
-    openai_format_tools = choose_tools(openai_format_tools)
+    if cfg.synthesizer.test:
+        openai_format_tools = choose_tools(openai_format_tools)
     print("------------openai_format_tools------------", openai_format_tools)
     pretty.pprint(openai_format_tools)
     synth_cfg = cfg.synthesizer
