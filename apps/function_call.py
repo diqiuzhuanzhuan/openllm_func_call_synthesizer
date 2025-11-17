@@ -24,6 +24,8 @@ def main():
     cfg = {"transport": "http://192.168.111.9:12000/mcp"}
     mcp_tools = loop.run_until_complete(get_mcp_tools(cfg))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
+    from rich import pretty
+    pretty.pprint(openai_format_tools)
 
     from openai import OpenAI
 

@@ -54,6 +54,7 @@ async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
 def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     data_file = cfg.synthesizer.query_generation.function_docs
     query_generator_cfg = cfg.synthesizer.query_generation
+    OmegaConf.set_struct(query_generator_cfg, False)
     if not Path(data_file).exists():
         raise FileNotFoundError(f"File {data_file} not found")
     # 从 function_docs.json 读取包含 query 的工具定义
@@ -152,6 +153,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     print(f"sampled {len(sampled)} functions: {sampled}")
     functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
+    
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
     function_call_generator = FunctionCallGenerator(
         **fc_kwargs,

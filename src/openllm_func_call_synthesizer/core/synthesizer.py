@@ -113,8 +113,7 @@ class QueryGenerator(curator.LLM):
 
     def __init__(self, model_name: str = None, backend: str = None, language: str = "English", **kwargs):
         """Initialize with optional language for generation."""
-        backend_params = dict().update(kwargs.get("backend_params", {}))
-        super().__init__(model_name=model_name, backend=backend, backend_params=backend_params)
+        super().__init__(model_name=model_name, backend=backend, **kwargs)
         self.language = language
 
     def _hash_fingerprint(self, dataset_hash: str = "", disable_cache: bool = False):
