@@ -165,7 +165,7 @@ def batch_vote_for_queries(df_grouped_data):
             results.append(
                 {"query": query, "model_function_calls": model_function_calls, "voted_function_call": voted_result}
             )
-        except:
+        except Exception:
             print("--------------------error--------------------", row)
             results.append({"query": query, "model_function_calls": model_function_calls, "voted_function_call": ""})
 
@@ -178,7 +178,8 @@ test_data = [
     {"model": "gpt-4o", "function_call": '{"name": "music_play_control", "arguments": {}}'},
     {
         "model": "qwen3-4b-2507",
-        "function_call": '{"name": "music_play_control", "arguments": {"title": "Happy Birthday", "type": "song", "source": "recent", "play_mode": "normal"}}',
+        "function_call": '{"name": "music_play_control", \
+            "arguments": {"title": "Happy Birthday", "type": "song", "source": "recent", "play_mode": "normal"}}',
     },
 ]
 
@@ -198,11 +199,11 @@ df["model_function_call"] = df["model_function_call"].apply(lambda x: change_dec
 df_result = batch_vote_for_queries(df)
 
 df_raw = pd.read_excel("/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/data/merge_data/merge_data.xlsx")
-df_raw.columns, df_raw.shape
-df_result.columns, df_result.shape
+print(df_raw.columns, df_raw.shape)
+print(df_result.columns, df_result.shape)
 
 df_result = df_result.drop_duplicates(subset=["query"])
-df_result.columns, df_result.shape
+print(df_result.columns, df_result.shape)
 df_raw = df_raw.drop_duplicates(subset=["query"])
 print(df_raw.columns, df_raw.shape)
 df_raw = df_raw[["query", "dimension", "language", "function_call_model", "model_function_call"]]

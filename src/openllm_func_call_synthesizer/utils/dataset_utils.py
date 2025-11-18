@@ -52,11 +52,7 @@ def format_openai(example: dict, system_prompt: str) -> dict:
                 "tool_calls": example["answer"]["tool_calls"] or [],
             },
         ],
-        "tools": json.dumps([
-            json.loads(json_str) for json_str in example["functions"]
-            ], 
-            ensure_ascii=False
-            ),
+        "tools": json.dumps([json.loads(json_str) for json_str in example["functions"]], ensure_ascii=False),
     }
 
 

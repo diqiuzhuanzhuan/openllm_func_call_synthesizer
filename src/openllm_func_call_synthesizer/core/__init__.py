@@ -21,13 +21,17 @@
 # SOFTWARE.
 
 from .synthesizer import (
-    ConversionGenerator,
-    FunctionCallGenerator,
-    QueryGenerator,
+    ConversionGenerator as ConversionGenerator,
+)
+from .synthesizer import (
+    FunctionCallGenerator as FunctionCallGenerator,
+)
+from .synthesizer import (
+    QueryGenerator as QueryGenerator,
 )
 
 __ALL__ = [
     "FunctionCallGenerator",
-    "QueryGenerator",
     "ConversionGenerator",
+    "QueryGenerator",
 ]

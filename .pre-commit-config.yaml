@@ -13,8 +13,27 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff-check
-        args: [ --fix]
+        args:
+        - --fix
+        - --exclude
+        - src/openllm_func_call_synthesizer/data_process/generate_train_dataset_lora.ipynb
+        - --exclude
+        - src/openllm_func_call_synthesizer/data_process/data_process_utils.ipynb
+        - --exclude
+        - tests/Standard_Test_Local_Model/test_one_data.ipynb
+        - --exclude
+        - src/openllm_func_call_synthesizer/data_process/generate_train_dataset_lora.py
+        - --exclude
+        - src/openllm_func_call_synthesizer/data_process/data_process_v2.ipynb
+
       # Run the formatter.
       - id: ruff-format
+        args:
+          - --exclude
+          - src/openllm_func_call_synthesizer/data_process/data_process_utils.ipynb
+          - --exclude
+          - tests/Standard_Test_Local_Model/test_one_data.ipynb
+          - --exclude
+          - src/openllm_func_call_synthesizer/data_process/generate_train_dataset_lora.py
 
-exclude: 'tests/*'
+exclude: src/openllm_func_call_synthesizer/data_process/data_process_utils.ipynb

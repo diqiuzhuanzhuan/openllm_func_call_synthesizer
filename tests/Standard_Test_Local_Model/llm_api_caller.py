@@ -83,7 +83,7 @@ def extract_intent(x):
 
             try:
                 parsed = json.loads(x)
-            except:
+            except Exception:
                 parsed = ast.literal_eval(x)
         else:
             parsed = x
@@ -314,7 +314,8 @@ Please strictly follow the output requirements below:
 
    * Slots:
 
-     * `keywords`: a description of the photo, e.g., "photos taken last December", "photos about soccer", “photos at the beach,” “photos from the amusement park”
+     * `keywords`: a description of the photo, e.g., \
+         "photos taken last December", "photos about soccer", “photos at the beach,” “photos from the amusement park”
 
 3. **get_album_list**: Retrieve albums
 
@@ -387,16 +388,20 @@ Please strictly follow the output requirements below:
 """
 
     system_prompt_5intent = """
-You are an NAS intent classifier. You need to accurately categorize the user's input into one of the following five intent categories. **Only output the category name**, and reply in English.
+You are an NAS intent classifier. \
+    You need to accurately categorize the user's input into one of the following five intent categories. \
+    **Only output the category name**, and reply in English.
 
 ### Intent Categories and Definitions
 1. **general_knowledge_query**: Questions about general knowledge or topics not related to NAS.
    *Example*: "What is the capital of France?"
-2. **search_photos**: Search for photos or images based on content, tags, or keywords. Typically includes words like “picture”, “photo”, or “image”.
+2. **search_photos**: Search for photos or images based on content, tags, or keywords. \
+    Typically includes words like “picture”, “photo”, or “image”.
    *Example*: "Find photos from my beach vacation."
 3. **summary_document**: Summarize the content of a document or report.
    *Example*: "Summarize the quarterly report for me."
-4. **search_document**: Locate specific documents or files based on keywords. Often includes terms like “document”, “file”, or “report”.
+4. **search_document**: Locate specific documents or files based on keywords. \
+    Often includes terms like “document”, “file”, or “report”.
    *Example*: "Find the 2023 financial report."
 5. **translate**: Translate text or documents into a specified language.
    *Example*: "Translate the user manual into Spanish."
@@ -411,6 +416,7 @@ input: "Summarize the main idea of this document." → summary_document
 User input:
 
 """
+    print(f"five intent: \n{system_prompt_5intent}")
     system_prompt = system_prompt_mcp  # system_prompt_5intent  # fallback
 
     API_URL = "http://192.168.111.3:11434/api/chat"

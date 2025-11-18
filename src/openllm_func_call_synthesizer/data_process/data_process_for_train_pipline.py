@@ -13,7 +13,6 @@ import pandas as pd
 sys.path.append("/data0/work/SusieSu/project")
 sys.path.append("/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/utils")
 sys.path.append("/data0/work/SusieSu/project/openllm_func_call_synthesizer/tests/Standard_Test_Local_Model/")
-from Call_LLM_Utils.read_file_util import *
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
@@ -87,7 +86,7 @@ def standard_eval_json(x):
         else:
             print("not str", type(x), x)
             return x
-    except:
+    except Exception:
         print("error", type(x), x)
         return {}
 
@@ -119,7 +118,7 @@ def concat_prompt(df):
         system_prompt_uliya = f2.read()
 
     lora_input_list = []
-    for i, df_0 in df.iterrows():
+    for _, df_0 in df.iterrows():
         df_ = df_0.to_dict()
         intent_ = df_.get("intent", "")
         system_prompt = system_prompt_mcp if intent_ in MCP_INTENT_LIST else system_prompt_uliya
@@ -149,7 +148,9 @@ def train_dev_test_split(df, root):
     print("dev_df language value counts: ", dev_df["language"].value_counts())
     print("test_df language value counts: ", test_df["language"].value_counts())
 
-    # mcp_intent = ['video_search_control', 'create_album', 'search_photos',  'get_system_info', 'music_play_control', 'get_album_list', 'unknown', 'video_play_control', 'music_settings_control', 'music_search_control']
+    # mcp_intent = ['video_search_control', 'create_album', 'search_photos',  \
+    # 'get_system_info', 'music_play_control', 'get_album_list', 'unknown', \
+    # 'video_play_control', 'music_settings_control', 'music_search_control']
     # uliya_intent = ['search_document', 'general_query', 'translate', 'summary_document']
 
     # test_df1 = test_df[test_df['intent'].isin(mcp_intent)]
@@ -179,7 +180,6 @@ def train_dev_test_split(df, root):
 
 
 if __name__ == "__main__":
-    # "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112/function_call_for_train_1112.xlsx"
     root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2"
     for_train_root = os.path.join(root, "mcp_data_1112_for_train/")
     if not os.path.exists(for_train_root):

@@ -213,3 +213,4 @@ data
 test.ipynb
 *.json
 *.csv
+.env

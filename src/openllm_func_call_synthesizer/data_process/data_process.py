@@ -143,22 +143,30 @@ print("=== 测试相同结果的投票 ===")
 result1 = vote_for_model_results(test_data)
 print(f"\n最终投票结果: {result1}")
 
-
 # sample_grouped_data = pd.DataFrame([
 #     {
 #         'query': '设置音乐自动停止',
 #         'model_function_call': [
-#             {'model': 'claude-sonnet-4', 'function_call': '{"name": "music_settings_control", "arguments": {"auto_stop_time": 15}}'},
-#             {'model': 'gpt-4o', 'function_call': '{"name": "music_settings_control", "arguments": {"auto_stop_time": 15}}'},
-#             {'model': 'gemini-2.5', 'function_call': '{"name": "music_settings_control", "arguments": {"auto_stop_time": 20}}'}
+#             {'model': 'claude-sonnet-4',
+#               'function_call':
+# '{"name": "music_settings_control", "arguments": {"auto_stop_time": 15}}'},
+#             {'model': 'gpt-4o',
+# 'function_call': '{"name": "music_settings_control", "arguments": {"auto_stop_time": 15}}'},
+#             {'model': 'gemini-2.5', 'function_call':
+# '{"name": "music_settings_control", "arguments": {"auto_stop_time": 20}}'}
 #         ]
 #     },
 #     {
 #         'query': '播放视频',
 #         'model_function_call': [
-#             {'model': 'claude-sonnet-4', 'function_call': '{"name": "video_play", "arguments": {"quality": "4K"}}'},
-#             {'model': 'gpt-4o', 'function_call': '{"name": "video_play", "arguments": {"quality": "HD"}}'},
-#             {'model': 'gemini-2.5', 'function_call': '{"name": "video_play", "arguments": {"quality": "4K"}}'}
+#             {
+# 'model': 'claude-sonnet-4',
+# 'function_call':
+# '{"name": "video_play", "arguments": {"quality": "4K"}}'},
+#             {'model': 'gpt-4o',
+# 'function_call': '{"name": "video_play", "arguments": {"quality": "HD"}}'},
+#             {'model': 'gemini-2.5',
+# 'function_call': '{"name": "video_play", "arguments": {"quality": "4K"}}'}
 #         ]
 #     }
 # ])

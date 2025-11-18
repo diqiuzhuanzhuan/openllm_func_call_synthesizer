@@ -20,13 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-import json
 
+import pandas as pd
 import yaml
+from datasets import Dataset
 from deprecated import deprecated
 from fastmcp.tools import Tool
 from pydantic import BaseModel
@@ -266,10 +269,6 @@ def format_value_counts(df, key_column):
     return result
 
 
-import pandas as pd
-from datasets import Dataset
-
-
 def pick_unique(
     dataset: list[dict] | pd.DataFrame | Dataset, field: str, k: int = 4
 ) -> list[dict] | pd.DataFrame | Dataset:
@@ -309,7 +308,6 @@ def pick_unique(
 
 
 # 语言检测 detect_language   标注 中英日德
-import re
 
 
 def detect_language(input_text):
@@ -395,7 +393,8 @@ if __name__ == "__main__":
                         },
                         "timezone": {
                             "type": "string",
-                            "description": "The timezone of the location, defaults to the location's timezone if not provided",
+                            "description": "The timezone of the location, \
+                                defaults to the location's timezone if not provided",
                         },
                     },
                     "additionalProperties": False,

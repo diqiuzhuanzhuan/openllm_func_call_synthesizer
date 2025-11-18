@@ -24,6 +24,7 @@ import json
 
 from bespokelabs import curator
 from bespokelabs.curator.log import logger
+from pydantic import BaseModel, Field
 from rich import pretty
 from xxhash import xxh64
 
@@ -92,9 +93,6 @@ class FunctionCallGenerator(curator.LLM):
         return input
 
 
-from pydantic import BaseModel, Field
-
-
 class QueryFunc(BaseModel):
     query: str = Field(..., description="The natural language query")
     function: str = Field(..., description="The function name to call")
@@ -133,7 +131,9 @@ Your goal is to produce diverse, natural, and human-like user queries that would
 ---
 
 ### 🎯 Objective
-Generate **15–20** realistic, conversational, and semantically equivalent user queries in **{self.language}** that could all be interpreted as invoking the same function.
+Generate **15–20** realistic, conversational, \
+    and semantically equivalent user queries in **{self.language}** \
+        that could all be interpreted as invoking the same function.
 
 ---
 
