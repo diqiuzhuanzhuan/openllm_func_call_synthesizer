@@ -41,6 +41,9 @@ from openllm_func_call_synthesizer.utils import (
     pick_unique,
     tool_format_convert,
 )
+from openllm_func_call_synthesizer.utils.dataset_utils import (
+    format_openai,
+)
 
 
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
@@ -53,6 +56,15 @@ async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
 
 
 def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
+    """Generate a dataset of queries for function calls.
+
+    Args:
+        cfg (DictConfig): Configuration object containing settings for query generation.
+        function_docs (list[dict]): List of function documentation dictionaries.
+
+    Raises:
+        FileNotFoundError: If the specified function documentation file is not found.
+    """
     data_file = cfg.synthesizer.query_generation.function_docs
     query_generator_cfg = cfg.synthesizer.query_generation
     OmegaConf.set_struct(query_generator_cfg, False)
@@ -100,9 +112,8 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     languages = query_generator_cfg.get("languages", ["English"])
     output_datasets = []
     for language in languages:
-        for name in query_generator_cfg.providers:
+        for name, provider in query_generator_cfg.providers.items():
             print(f"provider: {name}, language: {language}")
-            provider = query_generator_cfg.providers[name]
             for model in provider.models:
                 print(f"model: {model}")
                 # Instantiate generator with language
@@ -203,6 +214,27 @@ def critic_function_call_dataset(cfg: DictConfig):
     cg.dataset.to_parquet(str(output_dir / "output.parquet"))
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
+    
+def create_llama_factory_compatible_dataset(cfg: DictConfig):
+    llama_factory_cfg = cfg.synthesizer.llama_factory
+    critic_dataset_path = Path(llama_factory_cfg.critic_dataset)
+    if not critic_dataset_path.exists():
+        raise FileNotFoundError(f"File {critic_dataset_path} not found")
+    dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
+    dataset = dataset.filter(
+        lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold
+    )
+    openai_format_dataset = dataset.map(
+        format_openai,
+        fn_kwargs={"system_prompt": llama_factory_cfg.system_prompt},
+    ).remove_columns(dataset["train"].column_names)
+    output_dir = Path(llama_factory_cfg.output_dir) / llama_factory_cfg.name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    openai_format_dataset['train'].to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
+    openai_format_dataset['train'].to_csv(str(output_dir / "output.csv"))
+    openai_format_dataset['train'].to_parquet(str(output_dir / "output.parquet"))
+    
 
 def choose_tools(openai_format_tools, target_names: List[str] = ['search_photos', 'create_album']):
     # target_names = ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
@@ -232,7 +264,7 @@ def main(cfg: DictConfig):
     loop = asyncio.get_event_loop()
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
-    # choose part tools
+    # choose part tools, only for test
     if cfg.synthesizer.test:
         openai_format_tools = choose_tools(openai_format_tools)
     print("------------openai_format_tools------------", openai_format_tools)
@@ -241,9 +273,10 @@ def main(cfg: DictConfig):
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    generate_query_dataset(cfg, function_docs=openai_format_tools)
-    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
-    critic_function_call_dataset(cfg)
+    #generate_query_dataset(cfg, function_docs=openai_format_tools)
+    #generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    #critic_function_call_dataset(cfg)
+    create_llama_factory_compatible_dataset(cfg)
 
 
 if __name__ == "__main__":

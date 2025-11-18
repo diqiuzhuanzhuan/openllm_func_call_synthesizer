@@ -40,8 +40,6 @@ def format_openai(example: dict, system_prompt: str) -> dict:
     Returns:
         A dictionary containing the formatted example.
     """
-    print(type(example["functions"]))
-    print("helo")
     import json
 
     return {
@@ -54,7 +52,11 @@ def format_openai(example: dict, system_prompt: str) -> dict:
                 "tool_calls": example["answer"]["tool_calls"] or [],
             },
         ],
-        "tools": [json.loads(json_str) for json_str in example["functions"]],
+        "tools": json.dumps([
+            json.loads(json_str) for json_str in example["functions"]
+            ], 
+            ensure_ascii=False
+            ),
     }
 
 
