@@ -54,6 +54,36 @@ async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
     return tools
 
 
+def choose_tools(openai_format_tools, target_names: list[str]):
+    if not target_names:
+        target_names = [
+        "search_photos",
+        "create_album",
+        "get_album_list",
+        "music_play_control",
+        "music_search_control",
+        "music_settings_control",
+        "video_search_control",
+        "video_play_control",
+        "get_system_info"
+        ]
+
+    # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
+    filtered_tools = []
+    for tool in openai_format_tools["tools"]:
+        # 确保有function字段并且有name
+        function_info = tool.get("function", {})
+        func_name = function_info.get("name", None)
+        if func_name in target_names:
+            filtered_tools.append(tool)
+
+    # 覆盖原 openai_format_tools，使格式保持不变，只保留符合的tools
+    openai_format_tools2 = {"tools": filtered_tools}
+
+    print("------------openai_format_tools choosed------------", type(openai_format_tools2), openai_format_tools2)
+
+    return openai_format_tools2
+
 def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     """Generate a dataset of queries for function calls.
 
@@ -64,6 +94,14 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     Raises:
         FileNotFoundError: If the specified function documentation file is not found.
     """
+    # choose part tools to generate query
+    if cfg.synthesizer.choose_part_tools:
+        print('--------cfg.synthesizer.choose_part_tools-----', cfg.synthesizer.choose_part_tools)
+        if cfg.synthesizer.choose_part_tools:
+           function_docs_choosed = choose_tools(function_docs, cfg.synthesizer.choose_part_tools)
+           print("------------function_docs_choosed------------", function_docs_choosed)
+           function_docs = function_docs_choosed
+
     data_file = cfg.synthesizer.query_generation.function_docs
     query_generator_cfg = cfg.synthesizer.query_generation
     OmegaConf.set_struct(query_generator_cfg, False)
@@ -220,7 +258,9 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     if not critic_dataset_path.exists():
         raise FileNotFoundError(f"File {critic_dataset_path} not found")
     dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
-    dataset = dataset.filter(lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold)
+    if llama_factory_cfg.score_field in dataset.columns.to_list():
+        dataset = dataset.filter(lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold)
+
     openai_format_dataset = dataset.map(
         format_openai,
         fn_kwargs={"system_prompt": llama_factory_cfg.system_prompt},
@@ -233,36 +273,6 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     openai_format_dataset["train"].to_parquet(str(output_dir / "output.parquet"))
 
 
-def choose_tools(openai_format_tools, target_names: list[str]):
-    if not target_names:
-        target_names = ["search_photos", "create_album"]
-    # target_names = [
-    # "search_photos",
-    # "create_album",
-    # "get_album_list",
-    # "music_play_control",
-    # "music_search_control",
-    # "music_settings_control",
-    # "video_search_control",
-    # "video_play_control",
-    # "get_system_info"
-    # ]
-
-    # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
-    filtered_tools = []
-    for tool in openai_format_tools["tools"]:
-        # 确保有function字段并且有name
-        function_info = tool.get("function", {})
-        func_name = function_info.get("name", None)
-        if func_name in target_names:
-            filtered_tools.append(tool)
-
-    # 覆盖原 openai_format_tools，使格式保持不变，只保留符合的tools
-    openai_format_tools2 = {"tools": filtered_tools}
-
-    print("------------openai_format_tools2------------", type(openai_format_tools2), openai_format_tools2)
-
-    return openai_format_tools2
 
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
@@ -273,10 +283,6 @@ def main(cfg: DictConfig):
     loop = asyncio.get_event_loop()
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
-    # choose part tools, only for test
-    if cfg.synthesizer.test:
-        openai_format_tools = choose_tools(openai_format_tools)
-    print("------------openai_format_tools------------", openai_format_tools)
     pretty.pprint(openai_format_tools)
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
