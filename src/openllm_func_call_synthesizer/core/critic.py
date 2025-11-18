@@ -82,8 +82,11 @@ class Critic(curator.LLM):
         label_field="label",
         functions_field="functions",
         response_field="response",
+        **kwargs,
     ):
-        super().__init__(model_name, response_format, batch, backend, generation_params, backend_params, system_prompt)
+        super().__init__(
+            model_name, response_format, batch, backend, generation_params, backend_params, system_prompt, **kwargs
+        )
         self.query_field = query_field
         self.task_prompt_field = task_prompt_field
         self.label_field = label_field
