@@ -204,8 +204,8 @@ def critic_function_call_dataset(cfg: DictConfig):
 
 
 def choose_tools(openai_format_tools):
-    target_names = ["search_photos", "create_album"]
-    # target_names = ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
+    # target_names = ["search_photos", "create_album"]
+    target_names = ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
 
     # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
     filtered_tools = []
@@ -219,7 +219,7 @@ def choose_tools(openai_format_tools):
     # 覆盖原 openai_format_tools，使格式保持不变，只保留符合的tools
     openai_format_tools2 = {"tools": filtered_tools}
 
-    print("------------openai_format_tools2------------", type(openai_format_tools2), openai_format_tools2)
+    # print("------------openai_format_tools2------------", type(openai_format_tools2), openai_format_tools2)
 
     return openai_format_tools2
 
@@ -232,16 +232,17 @@ def main(cfg: DictConfig):
     loop = asyncio.get_event_loop()
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
-    # choose part tools
-    openai_format_tools = choose_tools(openai_format_tools)
     print("------------openai_format_tools------------", openai_format_tools)
+    # choose part tools
+    # openai_format_tools = choose_tools(openai_format_tools)
+    # print("------------openai_format_tools------------", openai_format_tools)
     pretty.pprint(openai_format_tools)
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    generate_query_dataset(cfg, function_docs=openai_format_tools)
-    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    # generate_query_dataset(cfg, function_docs=openai_format_tools)
+    # generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
 
 
