@@ -287,8 +287,8 @@ def main(cfg: DictConfig):
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    # generate_query_dataset(cfg, function_docs=openai_format_tools)
-    # generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    generate_query_dataset(cfg, function_docs=openai_format_tools)
+    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
     create_llama_factory_compatible_dataset(cfg)
 
