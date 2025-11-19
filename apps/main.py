@@ -57,15 +57,15 @@ async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
 def choose_tools(openai_format_tools, target_names: list[str]):
     if not target_names:
         target_names = [
-        "search_photos",
-        "create_album",
-        "get_album_list",
-        "music_play_control",
-        "music_search_control",
-        "music_settings_control",
-        "video_search_control",
-        "video_play_control",
-        "get_system_info"
+            "search_photos",
+            "create_album",
+            "get_album_list",
+            "music_play_control",
+            "music_search_control",
+            "music_settings_control",
+            "video_search_control",
+            "video_play_control",
+            "get_system_info",
         ]
 
     # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
@@ -84,6 +84,7 @@ def choose_tools(openai_format_tools, target_names: list[str]):
 
     return openai_format_tools2
 
+
 def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     """Generate a dataset of queries for function calls.
 
@@ -96,11 +97,11 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     """
     # choose part tools to generate query
     if cfg.synthesizer.choose_part_tools:
-        print('--------cfg.synthesizer.choose_part_tools-----', cfg.synthesizer.choose_part_tools)
+        print("--------cfg.synthesizer.choose_part_tools-----", cfg.synthesizer.choose_part_tools)
         if cfg.synthesizer.choose_part_tools:
-           function_docs_choosed = choose_tools(function_docs, cfg.synthesizer.choose_part_tools)
-           print("------------function_docs_choosed------------", function_docs_choosed)
-           function_docs = function_docs_choosed
+            function_docs_choosed = choose_tools(function_docs, cfg.synthesizer.choose_part_tools)
+            print("------------function_docs_choosed------------", function_docs_choosed)
+            function_docs = function_docs_choosed
 
     data_file = cfg.synthesizer.query_generation.function_docs
     query_generator_cfg = cfg.synthesizer.query_generation
@@ -271,8 +272,6 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     openai_format_dataset["train"].to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
     openai_format_dataset["train"].to_csv(str(output_dir / "output.csv"))
     openai_format_dataset["train"].to_parquet(str(output_dir / "output.parquet"))
-
-
 
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
