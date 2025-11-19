@@ -259,7 +259,7 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     if not critic_dataset_path.exists():
         raise FileNotFoundError(f"File {critic_dataset_path} not found")
     dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
-    if llama_factory_cfg.score_field in dataset.columns.to_list():
+    if llama_factory_cfg.score_field in dataset["train"].column_names:
         dataset = dataset.filter(lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold)
 
     openai_format_dataset = dataset.map(
@@ -287,8 +287,8 @@ def main(cfg: DictConfig):
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    generate_query_dataset(cfg, function_docs=openai_format_tools)
-    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    # generate_query_dataset(cfg, function_docs=openai_format_tools)
+    # generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
     create_llama_factory_compatible_dataset(cfg)
 

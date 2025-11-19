@@ -88,7 +88,7 @@ critic:
 
 
 llama_factory:
-  critic_dataset: "/data0/work/SusieSu/project/openllm_datas/data_1117"
+  critic_dataset: "data/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07"
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", xlsx, "parquet"
   name: "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_llama_factory"
