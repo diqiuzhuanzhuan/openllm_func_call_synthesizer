@@ -178,22 +178,69 @@ def train_dev_test_split(df, root):
     return train_df, dev_df, test_df
 
 
+def train_dev_test_split_from_jsonfile(jsonl_file, root, train_ratio=0.8, dev_ratio=0.1, test_ratio=0.1):
+    """
+    直接读取jsonl文件并分割为train/dev/test，不用DataFrame，不用\"lora_input\"列。直接按比例分割并保存jsonl。
+    """
+    import json
+    import os
+    import random
+
+    # 1. 读取所有数据
+    with open(jsonl_file, "r", encoding="utf-8") as fin:
+        all_lines = [line.strip() for line in fin if line.strip()]
+    print(f"Total samples: {len(all_lines)}")
+
+    # 2. 打乱顺序
+    random.seed(2025)
+    random.shuffle(all_lines)
+
+    n = len(all_lines)
+    n_train = int(n * train_ratio)
+    n_dev = int(n * dev_ratio)
+    n_test = n - n_train - n_dev
+
+    train_lines = all_lines[:n_train]
+    dev_lines = all_lines[n_train:n_train+n_dev]
+    test_lines = all_lines[n_train+n_dev:]
+
+    print(f"Train: {len(train_lines)}, Dev: {len(dev_lines)}, Test: {len(test_lines)}")
+
+    # 3. 保存分割后的数据 (保存为json格式, 每个文件为一个完整的json array)
+    os.makedirs(root, exist_ok=True)
+    # 将每行解析为json对象
+    train_objs = [json.loads(l) for l in train_lines]
+    dev_objs = [json.loads(l) for l in dev_lines]
+    test_objs = [json.loads(l) for l in test_lines]
+    # 保存为 .json
+    with open(os.path.join(root, "mcp_train.json"), "w", encoding="utf-8") as fout:
+        json.dump(train_objs, fout, ensure_ascii=False, indent=2)
+    with open(os.path.join(root, "mcp_dev.json"), "w", encoding="utf-8") as fout:
+        json.dump(dev_objs, fout, ensure_ascii=False, indent=2)
+    with open(os.path.join(root, "mcp_test.json"), "w", encoding="utf-8") as fout:
+        json.dump(test_objs, fout, ensure_ascii=False, indent=2)
+
+    return len(train_lines), len(dev_lines), len(test_lines)
+
+
 if __name__ == "__main__":
     # "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112/function_call_for_train_1112.xlsx"
-    root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2"
-    for_train_root = os.path.join(root, "mcp_data_1112_for_train/")
+    root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119"
+    for_train_root = os.path.join(root, "mcp_data_1119_for_train/")
+    jsonl_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/all_function_call_data.jsonl"
+
     if not os.path.exists(for_train_root):
         os.makedirs(for_train_root)
 
-    input_file = os.path.join(root, "function_call_for_train_1112.xlsx")
-    output_file = os.path.join(root, "raw_data_1112_for_train.xlsx")
+    input_file = os.path.join(root, "function_call_data_1118.xlsx")
+    output_file = os.path.join(root, "raw_data_1118_for_train.xlsx")
 
     # 定义一个控制每一步是否执行的字典
     steps_control = {"post_process": False, "pre_process": False, "concat_prompt": False, "train_dev_test_split": True}
 
-    # 0. 读取数据
-    df = pd.read_excel(input_file)
-    df.to_excel(output_file)
+    # # 0. 读取数据
+    # df = pd.read_excel(input_file)
+    # df.to_excel(output_file)
 
     # 1. 前处理：a.如果没有language给补充上 b.去掉bad case
     if steps_control["post_process"]:
@@ -214,6 +261,11 @@ if __name__ == "__main__":
     import ast
 
     # new add
-    df["lora_input"] = df["lora_input"].apply(ast.literal_eval)
+    
     if steps_control["train_dev_test_split"]:
-        train_dev_test_split(df, for_train_root)
+        # df["lora_input"] = df["lora_input"].apply(ast.literal_eval)
+        # train_dev_test_split(df, for_train_root)
+        train_dev_test_split_from_jsonfile(jsonl_file, for_train_root)
+
+    
+

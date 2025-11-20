@@ -22,12 +22,12 @@ use_api: false
 
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "0,1,2,3,4,5,6,7"
-num_processes: 8
+cuda_device: "0,1,2,7"
+num_processes: 4
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
-model_file_path: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/models/checkpoint-960"
+model_file_path: "/data0/work/SusieSu/project/workspace/weizhong_LLaMA-Factory-main/saves/qwen3_1.7b_1117_intent_mcp/sft/checkpoint-600"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
@@ -41,8 +41,7 @@ model_name: "mcp_intent_1016:q4_k_m"
 temperature: 0.01
 
 # 通过指定 root 目录来简化路径
-root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/mcp_data_1119_for_train"
-output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/mcp_data_1119_for_train"
+root: "/data0/work/SusieSu/project/openllm_datas/processed_data/mcp_data_1117_for_train"
 
 # 选择使用哪个系统提示词（仅用于向后兼容）
 prompt_key: "mcp"  # uliya or mcp
@@ -64,19 +63,16 @@ mcp_intent_list:
   - "video_search_control"
   - "video_play_control"
   - "get_system_info"
-  - "general_query"
-  - "summary_document"
-  - "translate"
 
-# uliya_intent_list:
-#   - "general_query"
-#   - "summary_document"
-#   # - "search_document"
-#   - "translate"
+uliya_intent_list:
+  # - "general_query"
+  - "summary_document"
+  # - "search_document"
+  - "translate"
 
 # ========== 输入输出文件配置 ==========
 # 支持 ${root} 变量，代码要先解析
-input_file: "${root}/test.xlsx"
+input_file: "${root}/test1.xlsx"
 output_file: "${root}/test_all_output_hybrid.xlsx"
 
 # 数据后处理输入输出
@@ -94,7 +90,7 @@ evaluate_output_file: "${root}/test_all_evaluate_hybrid.xlsx"
 # ========== 步骤执行控制 ==========
 # 控制执行哪些步骤 (true/false)
 steps:
-  inference: true               # 是否执行LLM推理
+  inference: true                 # 是否执行LLM推理
   postprocess: true             # 是否执行数据后处理（LLM+GT标准字段合成一步）
   evaluate: true                  # 是否执行评测
   evaluate_output_str: false
@@ -103,7 +99,7 @@ steps:
 # evaluate_separate: 是否分开评测 MCP 和 Uliya 数据
 #   - false (默认): 合并评测所有数据
 #   - true: 根据 gt_intent 是否在 mcp_intent_list/uliya_intent_list 中分开评测
-evaluate_separate: false  # 设为 true 则分开评测
+evaluate_separate: true  # 设为 true 则分开评测
 
 # ========== 数据字段配置 ==========
 # 输入数据中包含用户查询的字段名
@@ -123,8 +119,8 @@ llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会�
 # json_prompt_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/prompt_dict.json"  # JSON文件路径
 
 ## 方式2: 从txt 读取prompt
-system_prompt_mcp_file: "/data1/work/LiuWeiZhong/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp_1118_2031.txt"
-system_prompt_uliya_file: "/data1/work/LiuWeiZhong/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp_1118_2031.txt"
+system_prompt_mcp_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp.txt"
+system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_uliya.txt"
 
 
 # 如果不使用JSON文件，可以直接在这里写system_prompt
@@ -145,7 +141,7 @@ generation_config:
 logging:
   level: "INFO"
   save_logs: true
-  log_file: "/data1/work/LiuWeiZhong/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result"
+  log_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/test_result"
 
 evaluate_output_str:
   # 针对纯字符串输出的评测：直接比较两列是否相等

@@ -5,6 +5,8 @@ mcp_servers:
   "ugreen_mcp":
     transport: "http://192.168.111.9:12000/mcp"
 
+choose_tools: ["search_photos", "create_album"]  #  false ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
+
 query_generation:
   function_docs: examples/function_docs.json
 
@@ -49,8 +51,6 @@ query_generation:
       backend_params:
         max_concurrent_requests: 100
         require_all_responses: False
-
-
 
 function_call_generation:
   function_dataset: "function_call"

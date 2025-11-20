@@ -1,7 +1,12 @@
 import json
 
 import pandas as pd
+key_input_column = "input"
+key_output_column = "output" #function_call
 
+
+rs_key_intent_name = "intent" # name
+rs_key_slot_name = "slots" # arguments
 
 def test_one_response(messages):
     import os
@@ -32,10 +37,10 @@ def test_one_response(messages):
 import ast
 import re
 
-with open("/data0/work/SusieSu/project/uliya/mcp/function_docs.json") as f:
+with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tools.json") as f:
     fun_ = json.load(f)
 
-FUNCTIONS = fun_["tools"]
+FUNCTIONS = fun_
 FUNCTIONS = json.dumps(FUNCTIONS)
 
 
@@ -79,15 +84,16 @@ def parse_function_call(fc_raw):
     tool_calls = []
     if isinstance(fc, dict):
         fc = [fc]
+    
     if isinstance(fc, list):
         for idx, tool in enumerate(fc, 1):
             # 如果是chatGPT格式有外层function字段
             if "function" in tool:
-                name = tool["function"].get("name")
-                arguments = tool["function"].get("arguments")
+                name = tool["function"].get(rs_key_intent_name)
+                arguments = tool["function"].get(rs_key_slot_name)
             else:
-                name = tool.get("name")
-                arguments = tool.get("arguments")
+                name = tool.get(rs_key_intent_name)
+                arguments = tool.get(rs_key_slot_name)
             tc = {
                 "id": f"call_{idx}",
                 "type": "function",
@@ -141,40 +147,47 @@ def make_message_row_simple(row):
     构造给定行的 chat message 格式，支持function_call转为tool_calls
     """
     messages = [
-        {"role": "system", "content": "You are a helpful assistant that can call tools.", "loss_weight": 0.0},
-        {"role": "user", "content": str(row["query"]) if pd.notnull(row.get("query")) else "", "loss_weight": 0.0},
+        {"role": "system", "content": "You are a helpful assistant. You are given a query and a function call. You need to determine if the function call is correct for the query.", "loss_weight": 0.0},
+        {"role": "user", "content": str(row[key_input_column]) if pd.notnull(row.get(key_input_column)) else "", "loss_weight": 0.0},
     ]
 
-    has_fc = pd.notnull(row.get("function_call")) and str(row["function_call"]).strip() != ""
+    has_fc = pd.notnull(row.get(key_output_column)) and str(row[key_output_column]).strip() != ""
 
     if has_fc:
         # 用function_call生成tool_calls
-        tool_calls = parse_function_call(row["function_call"])
+        tool_calls = parse_function_call(row[key_output_column])
+        print('----tool_calls-----', tool_calls)
         assistant_msg = {"role": "assistant", "content": "", "tool_calls": tool_calls, "loss_weight": 1.0}
-    else:
+    elif 'answer' in row.columns.to_list():
         answer_content = get_answer_content(row.get("answer"))
         assistant_msg = {"role": "assistant", "content": answer_content, "tool_calls": [], "loss_weight": 1.0}
+    else:
+        assistant_msg = {}
 
     messages.append(assistant_msg)
 
-    return {"messages": messages, "functions": FUNCTIONS}
+    return {"messages": messages, "tools": FUNCTIONS}
 
 
 if __name__ == "__main__":
-    df = pd.read_csv(
-        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_critic_1112_v2/output.csv"
-    )
+    # df = pd.read_csv(
+    #     "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_critic_1112_v2/output.csv"
+    # )
+    df = pd.read_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/raw_data_filter_1119.xlsx')
     print(df.shape, df.columns)
-    print(df["score"].value_counts().sort_index(ascending=False))
-    df_none = df[df["function_call"].isnull() | (df["function_call"].astype(str).str.strip() == "")]
+    # print(df["score"].value_counts().sort_index(ascending=False))
+    
+
+    df_none = df[df[key_output_column].isnull() | (df[key_output_column].astype(str).str.strip() == "")]
     print("df_none.shape", df_none.shape)
 
     # 应用到df，加到新的一列里
-    df = df.drop_duplicates(subset=["query"])
+    # df = df.drop_duplicates(subset=["query"])
+    df = df.drop_duplicates(subset=[key_input_column])
     print("dedup df.shape", df.shape)
 
-    df = df[df["score"] > 4]
-    print("score > 4 df.shape", df.shape)
+    # df = df[df["score"] > 4]
+    # print("score > 4 df.shape", df.shape)
 
     df["lora_input"] = df.apply(make_message_row_simple, axis=1)
 
@@ -182,5 +195,5 @@ if __name__ == "__main__":
         print(json.dumps(df.iloc[i]["lora_input"], ensure_ascii=False, indent=2))
 
     df.to_excel(
-        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2/function_call_for_train_1112.xlsx"
+        "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/function_call_data_1119.xlsx"
     )

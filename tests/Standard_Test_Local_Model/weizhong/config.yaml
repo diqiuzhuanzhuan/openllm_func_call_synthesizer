@@ -22,12 +22,12 @@ use_api: false
 
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "0,1,2,3,4,5,6,7"
-num_processes: 8
+cuda_device: "0,1,2,3,4,5"
+num_processes: 6
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
-model_file_path: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/models/checkpoint-960"
+model_file_path: "/data0/work/SusieSu/project/workspace/weizhong_LLaMA-Factory-main/saves/qwen3_1.7b_1119_intent_mcp_1057/sft/checkpoint-600"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
@@ -41,8 +41,8 @@ model_name: "mcp_intent_1016:q4_k_m"
 temperature: 0.01
 
 # 通过指定 root 目录来简化路径
-root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/mcp_data_1119_for_train"
-output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/mcp_data_1119_for_train"
+root: "/data0/work/SusieSu/project/workspace/weizhong_LLaMA-Factory-main/data/mcp_train_data/mcp_data_1119_for_train_v1"
+output_root: "/data1/work/LiuWeiZhong/mcp_data_1118_for_train/new_evaluation_1119_1335"
 
 # 选择使用哪个系统提示词（仅用于向后兼容）
 prompt_key: "mcp"  # uliya or mcp
@@ -76,16 +76,16 @@ mcp_intent_list:
 
 # ========== 输入输出文件配置 ==========
 # 支持 ${root} 变量，代码要先解析
-input_file: "${root}/test.xlsx"
-output_file: "${root}/test_all_output_hybrid.xlsx"
+input_file: "${root}/test_all.xlsx"
+output_file: "${output_root}/test_all_output_hybrid.xlsx"
 
 # 数据后处理输入输出
-postprocess_input_file: "${root}/test_all_output_hybrid.xlsx"
-postprocess_output_file: "${root}/test_all_processed_hybrid.xlsx"
+postprocess_input_file: "${output_root}/test_all_output_hybrid.xlsx"
+postprocess_output_file: "${output_root}/test_all_processed_hybrid.xlsx"
 
 # 评测输入输出文件
-evaluate_input_file: "${root}/test_all_processed_hybrid.xlsx"
-evaluate_output_file: "${root}/test_all_evaluate_hybrid.xlsx"
+evaluate_input_file: "${output_root}/test_all_processed_hybrid.xlsx"
+evaluate_output_file: "${output_root}/test_all_evaluate_hybrid.xlsx"
 
 # #evaluate_output_str 输入输出文件
 # evaluate_output_str_input_file: "${root}/test_mcp_1017_with_gt_v3.xlsx"

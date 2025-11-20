@@ -441,57 +441,35 @@ def fix_inner_single_quotes(s):
                 return None
     return None
 
+
 def robust_parse_v2(x):
     """
-    增强版解析函数：
-    1. 优先尝试标准 JSON 解析 (支持 null)
-    2. 失败则尝试 Python AST 解析 (支持 None, 单引号)
-    3. 自动解包列表 (如果模型输出了List包含Dict)
+    新的解析方法, 优先用ast解析，如果失败并且字符串是用外层双引号包起来的且内容为Python字典，
+    使用fix_inner_single_quotes进一步解析。最后再尝试替换单引号再json解析一遍。
     """
     if isinstance(x, dict):
         return x
-    
-    parsed_result = None
-    
     if isinstance(x, str):
-        # --- 尝试 1: 标准 JSON (处理 "null", 双引号) ---
+        # 先尝试ast
         try:
-            parsed_result = json.loads(x)
+            return ast.literal_eval(x)
         except Exception:
-            # --- 尝试 2: Python AST (处理 "None", 单引号) ---
+            print(f"ast解析失败: {x}\n")
+            print("模型原始输出", x)
+            print("模型原始输出类型", type(x))
+            print("错误: {e1}")
+            res = fix_inner_single_quotes(x)
+            if res is not None:
+                return res
+            # 最后兜底: 尝试把所有单引号变为双引号再json.loads，
+            # 注意会有问题, 仅用于最后兜底防崩
             try:
-                # 预处理: 把 json 的 null/true/false 换成 python 的 None/True/False
-                x_python = x.replace("null", "None").replace("true", "True").replace("false", "False")
-                parsed_result = ast.literal_eval(x_python)
+                x_json_like = x.replace("'", '"')
+                return json.loads(x_json_like)
             except Exception:
-                # --- 尝试 3: 暴力修复 (修正双引号包裹单引号字典的情况) ---
-                try:
-                    res = fix_inner_single_quotes(x)
-                    if res is not None:
-                        parsed_result = res
-                    else:
-                        # 最后兜底
-                        x_json_like = x.replace("'", '"')
-                        parsed_result = json.loads(x_json_like)
-                except Exception:
-                    print(f"所有方式均失败: {x}")
-                    return {}
-
-    # --- 统一处理结果 ---
-    
-    # 情况 A: 解析出来是列表 (e.g. [{"intent":...}]) -> 取第一个元素
-    if isinstance(parsed_result, list):
-        if len(parsed_result) > 0 and isinstance(parsed_result[0], dict):
-            return parsed_result[0]
-        else:
-            return {} # 列表为空或里面不是字典
-
-    # 情况 B: 解析出来是字典 -> 直接返回
-    if isinstance(parsed_result, dict):
-        return parsed_result
-
-    # 情况 C: 其他奇怪类型 -> 返回空字典
-    return {}
+                print(f"所有方式均失败: {x}")
+                return {}
+    return x
 
 
 def postprocess_data(config):

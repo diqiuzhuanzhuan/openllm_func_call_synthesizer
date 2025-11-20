@@ -1,0 +1,1 @@
+nohup python -u apps/main.py  >logs/1118_1043.log 2>&1 &
