@@ -37,7 +37,6 @@ from openllm_func_call_synthesizer.core.synthesizer import (
 )
 from openllm_func_call_synthesizer.utils import (
     convert_to_openai_tools,
-    pick_unique,
     tool_format_convert,
 )
 from openllm_func_call_synthesizer.utils.dataset_utils import (
@@ -191,17 +190,17 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     if not Path(function_dataset_path).exists():
         raise FileNotFoundError(f"File {function_dataset_path} not found")
     dataset = load_dataset("json", data_files={"train": str(function_dataset_path / "train.jsonl")})
-    hashes = dataset["train"].unique("function_hash")
-    print(f"Found {len(hashes)} unique functions")
-    import random
+    # hashes = dataset["train"].("function_hash")
+    # print(f"Found {len(hashesunique)} unique functions")
+    # import random
 
-    chosen = random.sample(hashes, len(hashes))
+    # chosen = random.sample(hashes, len(hashes))
     # filter to only those hashes, select all currently because the number of functions is small
-    sampled = pick_unique(dataset["train"], "function_hash", len(chosen))
+    # sampled = pick_unique(dataset["train"], "function_hash", len(chosen))
 
     # sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
-    print(f"sampled {len(sampled)} functions: {sampled}")
-    functions = sampled["function"]
+    # print(f"sampled {len(sampled)} functions: {sampled}")
+    # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
 
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
@@ -214,7 +213,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {"functions": functions})
+    dataset = dataset.map(lambda x: {"functions": function_docs["tools"]})
     fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk
