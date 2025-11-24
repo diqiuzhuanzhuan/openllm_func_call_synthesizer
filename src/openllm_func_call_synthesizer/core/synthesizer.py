@@ -36,17 +36,10 @@ class FunctionCallGenerator(curator.LLM):
 
     return_completions_object = True
 
-    def _format_functions(self, functions: list[str]) -> str:
-        """Format a list of function definitions into a human-readable block."""
-        funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
-        return "\n\n".join(funcs)
-
     def prompt(self, input: dict) -> str:
         """The prompt is used to generate the function call."""
         # Prepare a readable listing of available functions
         return f"""
-        You are an expert in structured function calling.
-        The user request is:
         {input["query"]}
         """
 
