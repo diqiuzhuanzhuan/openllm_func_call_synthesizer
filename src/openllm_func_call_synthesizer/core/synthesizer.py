@@ -61,18 +61,18 @@ class FunctionCallGenerator(curator.LLM):
         input["prompt"] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
-            input["answer"] = response["choices"][0]["message"]
+            input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
 
         else:
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             if function_call is None:
-                input["answer"] = response["choices"][0]["message"]
+                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
                 input["function_call"] = None
                 # raise ValueError("The model did not return a valid function call.")
             else:
                 input["function_call"] = json.dumps(function_call, ensure_ascii=False)
-                input["answer"] = response["choices"][0]["message"]
+                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
 
         pretty.pprint("query: ")
         pretty.pprint(input["query"])
