@@ -9,6 +9,7 @@ For each function call labeling task provided, evaluate it based on the followin
 5. **Missing Optional Parameters**: Are relevant optional parameters appropriately included or excluded?
 6. **Edge Case Handling**: Are ambiguous cases, null values, or default values handled correctly?
 7. **Schema Compliance**: Does the labeled function call conform to the function definition/schema?
+8. **Language Consistency Penalty (IMPORTANT)**: If the user input is in Chinese but *any* extracted parameter is in another language (e.g., user says “我想查找夏天的照片” but annotation uses `"summer"`), deduct **8 points** immediately.
 
 {context_prompt}
 
@@ -28,7 +29,7 @@ For each function call labeling task provided, evaluate it based on the followin
 - 7-8: Good - Correct function, minor parameter issues (e.g., one optional parameter incorrectly handled)
 - 5-6: Acceptable - Correct function but multiple parameter errors or type mismatches
 - 3-4: Poor - Wrong function selected OR correct function but critical parameters missing/incorrect
-- 0-2: Unacceptable - Completely wrong function or unusable parameter extraction
+- 0-2: Unacceptable - Completely incorrect function selection, unusable or missing parameters, or any critical language inconsistency between user input and annotated parameters.
 
 **Function Call Specific Guidelines:**
 
