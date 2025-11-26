@@ -225,9 +225,9 @@ def train_dev_test_split_from_jsonfile(jsonl_file, root, train_ratio=0.8, dev_ra
 
 if __name__ == "__main__":
     # "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112/function_call_for_train_1112.xlsx"
-    root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119"
-    for_train_root = os.path.join(root, "mcp_data_1119_for_train/")
-    jsonl_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/all_function_call_data.jsonl"
+    root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124"
+    for_train_root = os.path.join(root, "mcp_data_1124_for_train/")
+    jsonl_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_train_1124.jsonl"
 
     if not os.path.exists(for_train_root):
         os.makedirs(for_train_root)

@@ -9,7 +9,7 @@ from llm_api_caller import batch_llm_predict_api
 
 # 导入本地模型和API调用模块
 from llm_local_caller import batch_llm_predict_threaded
-
+from calculate_confusion_matrix import get_confusion_matrix
 
 def load_config(config_file):
     """
@@ -511,8 +511,13 @@ def postprocess_data(config):
 
     # 保证llm_response为dict
     df[llm_response_col] = df[llm_response_col].apply(robust_parse_v2)
-    df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-    df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
+
+    if config["model_type"] == "uliya_intent":
+        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
+        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
+    else:
+        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
+        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
 
     # 处理Ground Truth列
     gt_col = config["ground_truth"]
@@ -521,8 +526,13 @@ def postprocess_data(config):
 
     # 保证为dict
     df[gt_col] = df[gt_col].apply(robust_parse_v2)
-    df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-    df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
+
+    if config["model_type"] == "uliya_intent":
+        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
+        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
+    else:
+        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
+        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
 
     df.to_excel(output_file, index=False)
     print(f"postprocess_data save to: {output_file}")
@@ -568,7 +578,8 @@ if __name__ == "__main__":
         print("------begin evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
         evaluate_module(config, data=df)
         print("------end evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
-
+        get_confusion_matrix(df)
+        print("------end calculate confusion matrix------", time.strftime("%Y-%m-%d %H:%M:%S"))
     # 步骤4: 纯字符串输出评测
     if steps_config.get("evaluate_output_str", False):
         print("------begin evaluate_output_str------", time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -576,3 +587,4 @@ if __name__ == "__main__":
         print("------end evaluate_output_str------", time.strftime("%Y-%m-%d %H:%M:%S"))
 
     print("======== 流水线执行完成 ========", time.strftime("%Y-%m-%d %H:%M:%S"))
+   

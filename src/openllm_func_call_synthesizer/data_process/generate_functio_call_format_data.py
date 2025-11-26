@@ -37,7 +37,7 @@ def test_one_response(messages):
 import ast
 import re
 
-with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tools.json") as f:
+with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tolls_1124.json") as f:
     fun_ = json.load(f)
 
 FUNCTIONS = fun_
@@ -195,5 +195,5 @@ if __name__ == "__main__":
         print(json.dumps(df.iloc[i]["lora_input"], ensure_ascii=False, indent=2))
 
     df.to_excel(
-        "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1119/function_call_data_1119.xlsx"
+        "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/function_call_data_1124.xlsx"
     )

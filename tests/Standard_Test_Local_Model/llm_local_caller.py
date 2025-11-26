@@ -27,9 +27,51 @@ def load_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
     return tokenizer, model
+import json
+with open('/data0/work/SusieSu/project/uliya/mcp/function_call_tools.json', 'r') as f:
+    fun_ = json.load(f)
 
+FUNCTIONS = fun_
+function_call_system_prompt= "You are a helpful assistant. You are given a query and a function call. You need to determine if the function call is correct for the query."
 
 def get_response(tokenizer, model, prompt):
+    """
+    使用本地模型生成响应
+    Args:
+        tokenizer: 分词器
+        model: 模型
+        prompt: 输入提示词
+    Returns:
+        生成的文本
+    """
+    messages = [
+        {"role": "system", "content": function_call_system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+        tools = FUNCTIONS
+    )
+    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    generated_ids = model.generate(
+        **model_inputs,
+        max_new_tokens=5000,
+        temperature=0.01,
+        top_p=0.1,
+    )
+    output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+    try:
+        index = len(output_ids) - output_ids[::-1].index(151668)
+    except ValueError:
+        index = 0
+    thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+    content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+    return content
+
+def get_response_mcp_intent(tokenizer, model, prompt):
     """
     使用本地模型生成响应
     Args:
