@@ -1,4 +1,6 @@
+import ast
 import json
+import re
 
 import pandas as pd
 key_input_column = "input"
@@ -13,16 +15,17 @@ def test_one_response(messages):
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,4,5"
 
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoTokenizer
 
-    root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_dataprocess_1025/train_datas_1025"
+    # root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/\
+    #    src/openllm_func_call_synthesizer/data_process/mcp_dataprocess_1025/train_datas_1025"
     model_name = (
         "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
     )
 
     # load the tokenizer and the models
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
+    # model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 
     text = tokenizer.apply_chat_template(
         messages["messages"],
@@ -34,10 +37,14 @@ def test_one_response(messages):
     print(text)
 
 
+<<<<<<< HEAD
 import ast
 import re
 
 with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tolls_1124.json") as f:
+=======
+with open("/data0/work/SusieSu/project/uliya/mcp/function_docs.json") as f:
+>>>>>>> d2ad3f86717e90ccfe154a8e6c0d47cc9f7510bc
     fun_ = json.load(f)
 
 FUNCTIONS = fun_

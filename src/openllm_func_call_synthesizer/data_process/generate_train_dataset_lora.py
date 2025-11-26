@@ -394,14 +394,18 @@ Tool Args: {"type": "object", "properties": {"system_type": {"type": "string", "
 Please answer in the same language as the question and use the following format:
 
 ```
-Thought: The current language of the user is: (user's language). I need to use a tool to help me answer the question.
-Action: tool name (one of create_album, search_photos, get_album_list, music_play_control, music_settings_control, video_search_control, video_play_control, get_system_info) if using a tool.
-Action Input: the input to the tool, in a JSON format representing the kwargs (e.g. {"input": "hello world", "num_beams": 5})
+Thought: The current language of the user is: \
+  (user's language). I need to use a tool to help me answer the question.
+Action: tool name (one of create_album, search_photos, \
+  get_album_list, music_play_control, music_settings_control, video_search_control, video_play_control, get_system_info) if using a tool.
+Action Input: the input to the tool, in a JSON format representing the kwargs \
+  (e.g. {"input": "hello world", "num_beams": 5})
 ```
 
 Please ALWAYS start with a Thought.
 
-NEVER surround your response with markdown code markers. You may use code markers within your response if you need to.
+NEVER surround your response with markdown code markers. \
+  You may use code markers within your response if you need to.
 
 Below is the user's request:
 
@@ -540,7 +544,7 @@ len(lora_input_list_train), len(lora_input_list_dev), len(lora_input_list_test)
 # In[28]:
 
 
-lora_input_list_train
+print(lora_input_list_train)
 
 
 # In[29]:
