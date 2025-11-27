@@ -13,6 +13,8 @@
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
+import json
+
 from bespokelabs import curator
 
 from openllm_func_call_synthesizer.core.formatter import (
@@ -68,6 +70,9 @@ class Critic(curator.LLM):
 
     return_completions_object = True
 
+    #    def _hash_fingerprint(self, dataset_hash: str = "", disable_cache: bool = False):
+    #        return super()._hash_fingerprint("", disable_cache)
+
     def __init__(
         self,
         model_name,
@@ -106,17 +111,20 @@ class Critic(curator.LLM):
         functions = input.get(self.functions_field, "")
         if not functions:
             raise ValueError("functions is required")
+        if isinstance(functions, str):
+            functions = json.dumps(json.loads(functions), ensure_ascii=False, indent=2)
         label = input.get(self.label_field, "")
         answer = input.get(self.response_field, "")
         if not label and not answer:
             raise ValueError("either label or answer is required")
-        model_output = label if label else answer["content"]
+        model_output = label if label else json.loads(answer)["content"]
 
         user_prompt = f"""
         The given instruction is {task_prompt}.
         The available functions are: {functions}
         The model output is :{model_output}
         """
+        print(user_prompt)
         return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
     def parse(self, input: dict, response) -> dict:

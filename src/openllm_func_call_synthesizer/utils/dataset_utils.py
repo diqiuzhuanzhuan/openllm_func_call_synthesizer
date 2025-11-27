@@ -42,17 +42,20 @@ def format_openai(example: dict, system_prompt: str) -> dict:
     """
     import json
 
+    message = json.loads(example["answer"])
     return {
         "messages": [
             {"role": "system", "content": system_prompt, "tool_calls": []},
             {"role": "user", "content": example["query"], "tool_calls": []},
             {
-                "role": example["answer"]["role"],
-                "content": example["answer"]["content"] or "",
-                "tool_calls": example["answer"]["tool_calls"] or [],
+                "role": message["role"],
+                "content": message["content"] or "",
+                "tool_calls": message.get("tool_calls", []),
             },
         ],
-        "tools": json.dumps([json.loads(json_str) for json_str in example["functions"]], ensure_ascii=False),
+        "tools": json.dumps(example["functions"], ensure_ascii=False)
+        if not isinstance(example["functions"], str)
+        else example["functions"],
     }
 
 

@@ -33,7 +33,7 @@ query_generation:
         - "gpt-4.1"
         - "gpt-5-mini"
       backend_params:
-        max_concurrent_requests: 100
+        max_tokens_per_minute: 1_000_000
         require_all_responses: False
 
     anthropic:
@@ -42,7 +42,7 @@ query_generation:
         - "claude-sonnet-4-20250514"
         - "claude-sonnet-4-5-20250929"
       backend_params:
-        max_concurrent_requests: 100
+        max_tokens_per_minute: 1_000_000
         require_all_responses: False
 
     google:
@@ -51,7 +51,7 @@ query_generation:
         - "gemini-2.5-pro-nothinking"
         - "gemini-2.5-flash-thinking"
       backend_params:
-        max_concurrent_requests: 100
+        max_tokens_per_minute: 200_000
         require_all_responses: False
 
 function_call_generation:
@@ -65,8 +65,7 @@ function_call_generation:
     backend: "openai"
     backend_params:
       require_all_responses: False
-      max_concurrent_requests: 100
-
+      max_tokens_per_minute: 8_000_000
 
 critic:
   function_call_dataset: "data/function_call_gpt_4o"
@@ -84,7 +83,7 @@ critic:
     backend: "openai"
     backend_params:
       require_all_responses: False
-      max_concurrent_requests: 100
+      max_tokens_per_minute: 3_000_000
 
 
 llama_factory:

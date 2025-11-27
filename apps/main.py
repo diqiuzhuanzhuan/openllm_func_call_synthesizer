@@ -213,7 +213,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {"functions": function_docs["tools"]})
+    dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
     fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk
