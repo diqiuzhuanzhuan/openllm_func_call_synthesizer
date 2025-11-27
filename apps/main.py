@@ -37,8 +37,10 @@ from openllm_func_call_synthesizer.core.synthesizer import (
 )
 from openllm_func_call_synthesizer.utils import (
     convert_to_openai_tools,
-    pick_unique,
     tool_format_convert,
+)
+from openllm_func_call_synthesizer.utils.dataset_utils import (
+    format_openai,
 )
 
 
@@ -50,9 +52,21 @@ async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
         tools = await client.list_tools()
     return tools
 
-def choose_tools(openai_format_tools, target_names):
-    
-    # target_names = ["search_photos", "create_album", "get_album_list", "music_play_control", "music_search_control","music_settings_control", "video_search_control", "video_play_control", "get_system_info"]
+
+def choose_tools(openai_format_tools, target_names: list[str]):
+    if not target_names:
+        target_names = [
+            "search_photos",
+            "create_album",
+            "get_album_list",
+            "music_play_control",
+            "music_search_control",
+            "music_settings_control",
+            "video_search_control",
+            "video_play_control",
+            "get_system_info",
+        ]
+
     # 遍历整个 openai_format_tools['tools']，只保留 function name 在 target_names 内的工具
     filtered_tools = []
     for tool in openai_format_tools["tools"]:
@@ -61,18 +75,32 @@ def choose_tools(openai_format_tools, target_names):
         func_name = function_info.get("name", None)
         if func_name in target_names:
             filtered_tools.append(tool)
+
     # 覆盖原 openai_format_tools，使格式保持不变，只保留符合的tools
     openai_format_tools2 = {"tools": filtered_tools}
 
+    print("------------openai_format_tools choosed------------", type(openai_format_tools2), openai_format_tools2)
+
     return openai_format_tools2
 
+
 def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
-    if cfg.synthesizer.choose_tools:
-        print('--------cfg.synthesizer.choose_tools-----', cfg.synthesizer.choose_tools)
-        if cfg.synthesizer.choose_tools:
-           function_docs_choosed = choose_tools(function_docs, cfg.synthesizer.choose_tools)
-           print("------------function_docs_choosed------------", function_docs_choosed)
-           function_docs = function_docs_choosed
+    """Generate a dataset of queries for function calls.
+
+    Args:
+        cfg (DictConfig): Configuration object containing settings for query generation.
+        function_docs (list[dict]): List of function documentation dictionaries.
+
+    Raises:
+        FileNotFoundError: If the specified function documentation file is not found.
+    """
+    # choose part tools to generate query
+    if cfg.synthesizer.choose_part_tools:
+        print("--------cfg.synthesizer.choose_part_tools-----", cfg.synthesizer.choose_part_tools)
+        if cfg.synthesizer.choose_part_tools:
+            function_docs_choosed = choose_tools(function_docs, cfg.synthesizer.choose_part_tools)
+            print("------------function_docs_choosed------------", function_docs_choosed)
+            function_docs = function_docs_choosed
 
     data_file = cfg.synthesizer.query_generation.function_docs
     query_generator_cfg = cfg.synthesizer.query_generation
@@ -121,9 +149,8 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     languages = query_generator_cfg.get("languages", ["English"])
     output_datasets = []
     for language in languages:
-        for name in query_generator_cfg.providers:
+        for name, provider in query_generator_cfg.providers.items():
             print(f"provider: {name}, language: {language}")
-            provider = query_generator_cfg.providers[name]
             for model in provider.models:
                 print(f"model: {model}")
                 # Instantiate generator with language
@@ -135,7 +162,7 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
                 )
                 # Generate records by iterating through examples and their variations
                 queries = qg(dataset=data)
-                ds = queries.dataset.map(lambda x: {"provider": name, "model": model})
+                ds = queries.dataset.map(lambda x, name=name, model=model: {"provider": name, "model": model})
 
                 # No need to flatten explicitly; iterate over dataset
                 # Collect this provider/model/language dataset
@@ -163,19 +190,19 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     if not Path(function_dataset_path).exists():
         raise FileNotFoundError(f"File {function_dataset_path} not found")
     dataset = load_dataset("json", data_files={"train": str(function_dataset_path / "train.jsonl")})
-    hashes = dataset["train"].unique("function_hash")
-    print(f"Found {len(hashes)} unique functions")
-    import random
+    # hashes = dataset["train"].("function_hash")
+    # print(f"Found {len(hashesunique)} unique functions")
+    # import random
 
-    chosen = random.sample(hashes, len(hashes))
+    # chosen = random.sample(hashes, len(hashes))
     # filter to only those hashes, select all currently because the number of functions is small
-    sampled = pick_unique(dataset["train"], "function_hash", len(chosen))
+    # sampled = pick_unique(dataset["train"], "function_hash", len(chosen))
 
     # sampled = dataset['train'].filter(lambda ex, chosen=chosen: ex["function_hash"] in chosen)
-    print(f"sampled {len(sampled)} functions: {sampled}")
-    functions = sampled["function"]
+    # print(f"sampled {len(sampled)} functions: {sampled}")
+    # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
-    
+
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
     function_call_generator = FunctionCallGenerator(
         **fc_kwargs,
@@ -186,7 +213,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {"functions": functions})
+    dataset = dataset.map(lambda x: {"functions": function_docs["tools"]})
     fcg = function_call_generator(dataset=dataset)
 
     # write function dataset to disk
@@ -225,7 +252,25 @@ def critic_function_call_dataset(cfg: DictConfig):
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
 
+def create_llama_factory_compatible_dataset(cfg: DictConfig):
+    llama_factory_cfg = cfg.synthesizer.llama_factory
+    critic_dataset_path = Path(llama_factory_cfg.critic_dataset)
+    if not critic_dataset_path.exists():
+        raise FileNotFoundError(f"File {critic_dataset_path} not found")
+    dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
+    if llama_factory_cfg.score_field in dataset["train"].column_names:
+        dataset = dataset.filter(lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold)
 
+    openai_format_dataset = dataset.map(
+        format_openai,
+        fn_kwargs={"system_prompt": llama_factory_cfg.system_prompt},
+    ).remove_columns(dataset["train"].column_names)
+    output_dir = Path(llama_factory_cfg.output_dir) / llama_factory_cfg.name
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    openai_format_dataset["train"].to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
+    openai_format_dataset["train"].to_csv(str(output_dir / "output.csv"))
+    openai_format_dataset["train"].to_parquet(str(output_dir / "output.parquet"))
 
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
@@ -236,18 +281,17 @@ def main(cfg: DictConfig):
     loop = asyncio.get_event_loop()
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
-    
-    print("------------openai_format_tools------------", openai_format_tools)
-    # choose part tools
-   
     pretty.pprint(openai_format_tools)
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    generate_query_dataset(cfg, function_docs=openai_format_tools)
+    if cfg.synthesizer.query_generation.enable:
+        generate_query_dataset(cfg, function_docs=openai_format_tools)
     generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
+    if cfg.synthesizer.llama_factory.enable:
+        create_llama_factory_compatible_dataset(cfg)
 
 
 if __name__ == "__main__":

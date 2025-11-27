@@ -111,7 +111,7 @@ def extract_intent(x):
 
             try:
                 parsed = json.loads(x)
-            except:
+            except Exception:
                 parsed = ast.literal_eval(x)
         else:
             parsed = x

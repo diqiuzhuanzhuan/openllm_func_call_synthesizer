@@ -86,7 +86,7 @@ def standard_eval_json(x):
         else:
             print("not str", type(x), x)
             return x
-    except Exception:
+    except Exception Exception:
         print("error", type(x), x)
         return {}
 
@@ -119,6 +119,7 @@ def concat_prompt(df):
 
     lora_input_list = []
     for _, df_0 in df.iterrows():
+    for _, df_0 in df.iterrows():
         df_ = df_0.to_dict()
         intent_ = df_.get("intent", "")
         system_prompt = system_prompt_mcp if intent_ in MCP_INTENT_LIST else system_prompt_uliya
@@ -149,7 +150,9 @@ def train_dev_test_split(df, root):
     print("test_df language value counts: ", test_df["language"].value_counts())
 
     # mcp_intent = ['video_search_control', 'create_album', 'search_photos',  \
+    # \
     # 'get_system_info', 'music_play_control', 'get_album_list', 'unknown', \
+    # \
     # 'video_play_control', 'music_settings_control', 'music_search_control']
     # uliya_intent = ['search_document', 'general_query', 'translate', 'summary_document']
 
@@ -225,16 +228,10 @@ def train_dev_test_split_from_jsonfile(jsonl_file, root, train_ratio=0.8, dev_ra
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     # "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112/function_call_for_train_1112.xlsx"
-    root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124"
-    for_train_root = os.path.join(root, "mcp_data_1124_for_train/")
-    jsonl_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_train_1124.jsonl"
-
-=======
     root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_for_train_1112_v2"
     for_train_root = os.path.join(root, "mcp_data_1112_for_train/")
->>>>>>> d2ad3f86717e90ccfe154a8e6c0d47cc9f7510bc
+
     if not os.path.exists(for_train_root):
         os.makedirs(for_train_root)
 

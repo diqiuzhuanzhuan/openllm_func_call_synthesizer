@@ -1,5 +1,7 @@
 import ast
+import ast
 import json
+import re
 import re
 
 import pandas as pd
@@ -25,7 +27,7 @@ def test_one_response(messages):
 
     # load the tokenizer and the models
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
+    # # model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 
     text = tokenizer.apply_chat_template(
         messages["messages"],
@@ -36,15 +38,10 @@ def test_one_response(messages):
     )
     print(text)
 
-
-<<<<<<< HEAD
 import ast
 import re
 
-with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tolls_1124.json") as f:
-=======
 with open("/data0/work/SusieSu/project/uliya/mcp/function_docs.json") as f:
->>>>>>> d2ad3f86717e90ccfe154a8e6c0d47cc9f7510bc
     fun_ = json.load(f)
 
 FUNCTIONS = fun_

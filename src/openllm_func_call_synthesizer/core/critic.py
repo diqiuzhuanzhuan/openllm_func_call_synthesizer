@@ -33,7 +33,8 @@ Your task is to **evaluate the quality of the model’s output** based on:
 
 You should score the model’s output from **0 to 10**, where:
 
-- **10** → Perfect: The intent is correctly identified, and all required slots are correctly extracted with accurate values.
+- **10** → Perfect: The intent is correctly identified, \
+    and all required slots are correctly extracted with accurate values.
 - **8–9** → Very good: Minor slot naming or value formatting issues, but intent and meaning are correct.
 - **6–7** → Acceptable: Intent correct, but missing or partially wrong slot(s).
 - **3–5** → Poor: Intent likely incorrect, or multiple slot extraction errors.
@@ -81,8 +82,11 @@ class Critic(curator.LLM):
         label_field="label",
         functions_field="functions",
         response_field="response",
+        **kwargs,
     ):
-        super().__init__(model_name, response_format, batch, backend, generation_params, backend_params, system_prompt)
+        super().__init__(
+            model_name, response_format, batch, backend, generation_params, backend_params, system_prompt, **kwargs
+        )
         self.query_field = query_field
         self.task_prompt_field = task_prompt_field
         self.label_field = label_field

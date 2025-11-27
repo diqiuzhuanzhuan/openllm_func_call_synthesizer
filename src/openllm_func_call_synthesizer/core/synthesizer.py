@@ -24,6 +24,7 @@ import json
 
 from bespokelabs import curator
 from bespokelabs.curator.log import logger
+from pydantic import BaseModel, Field
 from rich import pretty
 from xxhash import xxh64
 
@@ -35,17 +36,10 @@ class FunctionCallGenerator(curator.LLM):
 
     return_completions_object = True
 
-    def _format_functions(self, functions: list[str]) -> str:
-        """Format a list of function definitions into a human-readable block."""
-        funcs = [json.dumps(json.loads(func), ensure_ascii=False, indent=2) for func in functions]
-        return "\n\n".join(funcs)
-
     def prompt(self, input: dict) -> str:
         """The prompt is used to generate the function call."""
         # Prepare a readable listing of available functions
         return f"""
-        You are an expert in structured function calling.
-        The user request is:
         {input["query"]}
         """
 
@@ -67,18 +61,18 @@ class FunctionCallGenerator(curator.LLM):
         input["prompt"] = self.prompt(input)
         if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
             input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
-            input["answer"] = response["choices"][0]["message"]
+            input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
 
         else:
             # Handle the case where the model returns a string instead of a function call
             function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
             if function_call is None:
-                input["answer"] = response["choices"][0]["message"]
+                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
                 input["function_call"] = None
                 # raise ValueError("The model did not return a valid function call.")
             else:
                 input["function_call"] = json.dumps(function_call, ensure_ascii=False)
-                input["answer"] = response["choices"][0]["message"]
+                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
 
         pretty.pprint("query: ")
         pretty.pprint(input["query"])
@@ -90,9 +84,6 @@ class FunctionCallGenerator(curator.LLM):
             pretty.pprint(input["function_call"])
 
         return input
-
-
-from pydantic import BaseModel, Field
 
 
 class QueryFunc(BaseModel):
@@ -133,7 +124,9 @@ Your goal is to produce diverse, natural, and human-like user queries that would
 ---
 
 ### 🎯 Objective
-Generate **15–20** realistic, conversational, and semantically equivalent user queries in **{self.language}** that could all be interpreted as invoking the same function.
+Generate **15–20** realistic, conversational, \
+    and semantically equivalent user queries in **{self.language}** \
+        that could all be interpreted as invoking the same function.
 
 ---
 

@@ -20,12 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import yaml
+from datasets import Dataset
 from deprecated import deprecated
 from fastmcp.tools import Tool
 from pydantic import BaseModel
@@ -220,6 +224,20 @@ def read_json_file(file_path):
         print(f"读取 JSON 文件时出错: {e}")
 
 
+def write_json_file(data, file_path):
+    """
+    写入 JSON 文件
+    :param data: 要写入的数据（字典或列表）
+    :param file_path: JSON 文件路径
+    """
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        print("JSON 文件写入成功")
+    except Exception as e:
+        print(f"写入 JSON 文件时出错: {e}")
+
+
 def format_value_counts(df, key_column):
     # 计算计数和占比
     counts = df[key_column].value_counts()
@@ -249,10 +267,6 @@ def format_value_counts(df, key_column):
 
     # print(result)
     return result
-
-
-import pandas as pd
-from datasets import Dataset
 
 
 def pick_unique(
@@ -294,7 +308,6 @@ def pick_unique(
 
 
 # 语言检测 detect_language   标注 中英日德
-import re
 
 
 def detect_language(input_text):
@@ -380,7 +393,8 @@ if __name__ == "__main__":
                         },
                         "timezone": {
                             "type": "string",
-                            "description": "The timezone of the location, defaults to the location's timezone if not provided",
+                            "description": "The timezone of the location, \
+                                defaults to the location's timezone if not provided",
                         },
                     },
                     "additionalProperties": False,

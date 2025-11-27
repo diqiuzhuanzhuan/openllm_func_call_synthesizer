@@ -37,7 +37,7 @@ model_name: "mcp_intent_1016:q4_k_m"
 
 # API调用参数（可选，默认值如下）
 temperature: 0.01
-root = "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_dataprocess_1025/train_datas_1025"
+root: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/mcp_dataprocess_1025/train_datas_1025"
 
 # ========== 输入输出文件配置 ==========
 # llm推理文件 输入输出
