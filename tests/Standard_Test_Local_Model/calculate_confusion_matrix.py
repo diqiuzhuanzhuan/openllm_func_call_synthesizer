@@ -1,5 +1,5 @@
 import pandas as pd
-df = pd.read_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train/test_all_evaluate_hybrid_mcp.xlsx')
+df = pd.read_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1127/test_all_evaluate_hybrid.xlsx')
 df.shape, df.columns
 
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -41,7 +41,7 @@ def get_confusion_matrix(df):
 
     # 保留所有值小数点后4位
     cm_df = cm_df.round(4)
-    cm_df.to_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train/confusion_matrix.xlsx')
+    cm_df.to_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1127/test_all_evaluate_hybrid_confusion_matrix.xlsx')
     print(cm_df)
 
 if __name__ == "__main__":

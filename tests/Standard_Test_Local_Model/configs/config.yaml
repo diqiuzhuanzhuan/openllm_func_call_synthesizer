@@ -27,7 +27,7 @@ num_processes: 8
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
-model_file_path: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/models/checkpoint-960"
+model_file_path: "/data0/work/SusieSu/project/workspace/weizhong_LLaMA-Factory-main/saves/qwen3_1.7b_1126_intent_mcp/sft/checkpoint-600"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
