@@ -37,6 +37,7 @@ def main():
     cfg = {"transport": "http://192.168.111.9:12000/mcp"}
     mcp_tools = loop.run_until_complete(get_mcp_tools(cfg))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
+    write_json_file(openai_format_tools["tools"], "openai_tools.json")
     mcp_format_tools = convert_to_mcp_tools(openai_format_tools["tools"])
     write_json_file(mcp_format_tools["tools"], "mcp_tools.json")
     from rich import pretty
@@ -79,6 +80,7 @@ def main():
             }
 
         response = client.chat.completions.create(
+            temperature=1.7,
             model="qwen",
             messages=messages,
             tools=openai_format_tools["tools"],  # ⚡ 告诉模型有哪些工具可调用
