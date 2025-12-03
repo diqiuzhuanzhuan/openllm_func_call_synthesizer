@@ -9,7 +9,7 @@ For each function call labeling task provided, evaluate it based on the followin
 5. **Missing Optional Parameters**: Are relevant optional parameters appropriately included or excluded?
 6. **Edge Case Handling**: Are ambiguous cases, null values, or default values handled correctly?
 7. **Schema Compliance**: Does the labeled function call conform to the function definition/schema?
-8. **Language Consistency Penalty (IMPORTANT)**: If the user input is in Chinese but *any* extracted parameter is in another language (e.g., user says “我想查找夏天的照片” but annotation uses `"summer"`), deduct **8 points** immediately.
+8. **Language Consistency Penalty (IMPORTANT)**: Apply this penalty only when extracting free-text parameters or keywords. If the user input is in Chinese but the extracted keyword/parameter text is in another language (e.g., user says “我想查找夏天的照片” but you extract "summer"), deduct 8 points immediately. Do NOT apply this penalty when the parameter value itself is defined as an English enum option.
 
 {context_prompt}
 
