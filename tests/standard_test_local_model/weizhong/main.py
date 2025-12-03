@@ -9,7 +9,7 @@ from llm_api_caller import batch_llm_predict_api
 
 # 导入本地模型和API调用模块
 from llm_local_caller import batch_llm_predict_threaded
-from calculate_confusion_matrix import get_confusion_matrix
+
 
 def load_config(config_file):
     """
@@ -441,6 +441,7 @@ def fix_inner_single_quotes(s):
                 return None
     return None
 
+
 def robust_parse_v2(x):
     """
     增强版解析函数：
@@ -450,9 +451,9 @@ def robust_parse_v2(x):
     """
     if isinstance(x, dict):
         return x
-    
+
     parsed_result = None
-    
+
     if isinstance(x, str):
         # --- 尝试 1: 标准 JSON (处理 "null", 双引号) ---
         try:
@@ -478,13 +479,13 @@ def robust_parse_v2(x):
                     return {}
 
     # --- 统一处理结果 ---
-    
+
     # 情况 A: 解析出来是列表 (e.g. [{"intent":...}]) -> 取第一个元素
     if isinstance(parsed_result, list):
         if len(parsed_result) > 0 and isinstance(parsed_result[0], dict):
             return parsed_result[0]
         else:
-            return {} # 列表为空或里面不是字典
+            return {}  # 列表为空或里面不是字典
 
     # 情况 B: 解析出来是字典 -> 直接返回
     if isinstance(parsed_result, dict):
@@ -511,13 +512,8 @@ def postprocess_data(config):
 
     # 保证llm_response为dict
     df[llm_response_col] = df[llm_response_col].apply(robust_parse_v2)
-
-    if config["model_type"] == "uliya_intent":
-        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
-    else:
-        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
-        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
+    df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
+    df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
 
     # 处理Ground Truth列
     gt_col = config["ground_truth"]
@@ -526,13 +522,8 @@ def postprocess_data(config):
 
     # 保证为dict
     df[gt_col] = df[gt_col].apply(robust_parse_v2)
-
-    if config["model_type"] == "uliya_intent":
-        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
-    else:
-        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
-        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
+    df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
+    df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
 
     df.to_excel(output_file, index=False)
     print(f"postprocess_data save to: {output_file}")
@@ -578,8 +569,7 @@ if __name__ == "__main__":
         print("------begin evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
         evaluate_module(config, data=df)
         print("------end evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
-        get_confusion_matrix(df)
-        print("------end calculate confusion matrix------", time.strftime("%Y-%m-%d %H:%M:%S"))
+
     # 步骤4: 纯字符串输出评测
     if steps_config.get("evaluate_output_str", False):
         print("------begin evaluate_output_str------", time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -587,4 +577,3 @@ if __name__ == "__main__":
         print("------end evaluate_output_str------", time.strftime("%Y-%m-%d %H:%M:%S"))
 
     print("======== 流水线执行完成 ========", time.strftime("%Y-%m-%d %H:%M:%S"))
-   

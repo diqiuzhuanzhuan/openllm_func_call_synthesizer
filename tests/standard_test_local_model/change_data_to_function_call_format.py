@@ -1,0 +1,309 @@
+# 用于critic来用
+
+import json
+
+import pandas as pd
+
+df = pd.read_excel("/data0/work/SusieSu/project/openllm_datas/processed_data/raw_data_processed_backup.xlsx")
+print(df.shape, df.columns)
+
+df = df.drop_duplicates(subset=["input"])
+
+functions_template = [
+    {
+        "type": "function",
+        "function": {
+            "name": "create_album",
+            "description": "Create a new photo album, optionally based on search results from photo library\n\n\
+                Args:\n    album_name: Required. The name of the album to be created\n    \
+                    album_type: Required. normal (regular album), face (people album),\n    \
+                    baby (baby album), condition (conditional album), object (object recognition album).\n    \
+                    search_query: Optional. Search keyword or filter to find photos \
+                    (e.g.,\n    'beach', 'family', '2024 vacation'). \
+                    The album will include the photos matching this query.",
+            "parameters": {
+                "properties": {
+                    "album_name": {"title": "Album Name", "type": "string"},
+                    "search_query": {
+                        "anyOf": [{"type": "string"}, {"type": "null"}],
+                        "default": None,
+                        "title": "Search Query",
+                    },
+                    "album_type": {
+                        "default": "normal",
+                        "enum": ["normal", "baby", "face", "condition", "object"],
+                        "title": "Album Type",
+                        "type": "string",
+                    },
+                },
+                "required": ["album_name"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_photos",
+            "description": "Search for photos or images\n\nArgs:\n    \
+                keyword: The search keyword for photos or images. It can be descriptive text or a file name, e.g., \
+                    'photos taken last August' or 'dog on the grass'.",
+            "parameters": {
+                "properties": {"keyword": {"title": "Keyword", "type": "string"}},
+                "required": ["keyword"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_album_list",
+            "description": "Retrieve the list of photo albums.\nNoted that the album_type and keyword are optional, \
+            but at least one of them must be provided.\n\n\
+            Args:\n    album_type: The type of album to retrieve. Options: normal (regular album),\n               \
+            face (people album), baby (baby album), condition (conditional album),\n               \
+            object (object recognition album).\n    \
+            keyword: Optional search keyword to filter albums by name or content.",
+            "parameters": {
+                "properties": {
+                    "album_type": {
+                        "anyOf": [
+                            {"enum": ["normal", "face", "baby", "condition", "object"], "type": "string"},
+                            {"type": "null"},
+                        ],
+                        "title": "Album Type",
+                    },
+                    "keyword": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "Keyword"},
+                },
+                "required": ["album_type"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "music_play_control",
+            "description": "Music control tool: play songs, albums, artists, playlists, and other music content\n\
+            Noted that the title and source are optional, but at least one of them must be provided.\n\n\
+            Args:\n    title: Name or title of the music content\n    \
+            source: Content source: recent=recently played, favorites=liked songs, playlist=songs in this playlist.\n\
+            Only specify when user explicitly mentions recent or favorite content or playlist.\n    \
+            play_mode: Playback mode: normal=sequential, random=shuffle,\n              \
+            single=repeat single track, loop=repeat all.",
+            "parameters": {
+                "properties": {
+                    "title": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "Title"},
+                    "source": {
+                        "anyOf": [{"enum": ["recent", "favorites", "playlist"], "type": "string"}, {"type": "null"}],
+                        "default": None,
+                        "title": "Source",
+                    },
+                    "play_mode": {
+                        "default": "normal",
+                        "enum": ["normal", "random", "single", "loop"],
+                        "title": "Play Mode",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "music_settings_control",
+            "description": "Control music app settings, noted that the measurement unit is minute.\n\nArgs:\n    \
+                auto_stop_time: Set sleep timer duration, for example, stop playback after 15 minutes",
+            "parameters": {
+                "properties": {"auto_stop_time": {"title": "Auto Stop Time", "type": "number"}},
+                "required": ["auto_stop_time"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "music_search_control",
+            "description": "Music search tool: search for songs, albums, artists, or playlists based on keywords.\n\n\
+                Args:\n    keyword: Search keyword, such as song name, artist name, or album title.",
+            "parameters": {
+                "properties": {"keyword": {"title": "Keyword", "type": "string"}},
+                "required": ["keyword"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "video_search_control",
+            "description": "Video search tool: search TV series, movies, and other video content\n\
+            Noted that the title and source are optional, but at least one of them must be provided.\n\n\
+            Args:\n    title: Name or title of the video content, supports fuzzy matching.\n    \
+            source: Video content source (recent=recently played, favorites=liked videos,\n    \
+            media_library=videos in media library. \
+            Only specify when the user explicitly mentions recent,\n    \
+            favorite or media library content.)\n    \
+            type: Content type: tv=TV series/drama, movie=films/blockbusters,\n          \
+            collection=movie series/collections. Default is 'all' (search all types).",
+            "parameters": {
+                "properties": {
+                    "title": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "Title"},
+                    "source": {
+                        "anyOf": [
+                            {"enum": ["recent", "favorites", "media_library"], "type": "string"},
+                            {"type": "null"},
+                        ],
+                        "default": None,
+                        "title": "Source",
+                    },
+                    "type": {
+                        "default": "all",
+                        "enum": ["tv", "movie", "collection", "all"],
+                        "title": "Type",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "video_play_control",
+            "description": "Video play tool: play TV series, movies, and other video content\n\
+            Noted that the title and source are optional, but at least one of them must be provided.\n\n\
+            Args:\n    Title: Name or title of the video content, supports fuzzy matching.\n    \
+            Source: recent=recently played, favorites=liked videos, media_library=videos in media library.\n    \
+            Only specify when the user explicitly mentions recent, favorite or media library content.\n    \
+            Type: Content type: tv=TV series/drama, movie=films/blockbusters,\n          \
+            collection=movie series/collections, all=all types. Default is 'all' (search all types).",
+            "parameters": {
+                "properties": {
+                    "title": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "Title"},
+                    "source": {
+                        "anyOf": [
+                            {"enum": ["recent", "favorites", "media_library"], "type": "string"},
+                            {"type": "null"},
+                        ],
+                        "default": None,
+                        "title": "Source",
+                    },
+                    "type": {
+                        "default": "all",
+                        "enum": ["tv", "movie", "collection", "all"],
+                        "title": "Type",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_system_info",
+            "description": "Retrieves detailed information about the device, including operating system details,\n\
+            hardware specifications, storage status, network configuration,\nand UGREEN Link account information.\n\n\
+            Args:\n    system_type: The category of system information to retrieve:\n    \
+            'system' for OS and system info, 'device' for device-specific details,\n    \
+            'hardware' for CPU and memory specs, 'storage' for disk and storage status,\n    \
+            'network' for network configuration, 'uglink' for UGREEN Link account information.",
+            "parameters": {
+                "properties": {
+                    "system_type": {
+                        "enum": ["system", "device", "hardware", "storage", "network", "uglink"],
+                        "title": "System Type",
+                        "type": "string",
+                    }
+                },
+                "required": ["system_type"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add",
+            "description": "Adds two numbers.\nArgs:\n    a: The first number.\n    b: The second number.",
+            "parameters": {
+                "properties": {"a": {"title": "A", "type": "integer"}, "b": {"title": "B", "type": "integer"}},
+                "required": ["a", "b"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Returns the weather for a given city.\nArgs:\n    \
+            city: The city to get the weather for.",
+            "parameters": {
+                "properties": {"city": {"title": "City", "type": "string"}},
+                "required": ["city"],
+                "type": "object",
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "summary_document",
+            "description": "Summarize the content of a document or report.",
+            "parameters": {"properties": {}, "type": "object"},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "translate",
+            "description": "Translate text or documents into a specified language.\n\n\
+            Args:\n    text: The text content to be translated.\n    \
+            target_language: The language to translate into (e.g., 'French', 'Japanese').",
+            "parameters": {
+                "properties": {
+                    "text": {"title": "Text", "type": "string"},
+                    "target_language": {"title": "Target Language", "type": "string"},
+                },
+                "required": ["text", "target_language"],
+                "type": "object",
+            },
+        },
+    },
+]
+
+
+def change_to_function_call_dataset(df, functions_template):
+    output_ls = []
+    for _i, row in df.iterrows():
+        output_ls.append(
+            {
+                "query": row["input"],
+                "function_call": row["output"],
+                "answer": "",
+                "functions": functions_template,
+                "prompt": "You are an expert in structured function calling.\n        The user request is:\n "
+                + row["input"],
+                "intent": row["intent"],
+                "language": row["language"],
+            }
+        )
+    return output_ls
+
+
+output_ls = change_to_function_call_dataset(df, functions_template)
+df1 = pd.DataFrame(output_ls)
+print(df1.shape, df1.columns)
+
+df1.to_excel("/data0/work/SusieSu/project/openllm_datas/data_1117/train.xlsx")
+
+with open("/data0/work/SusieSu/project/openllm_datas/data_1117/train.jsonl", "w", encoding="utf-8") as fin:
+    json.dump(output_ls, fin, ensure_ascii=False, indent=4)

@@ -1,1 +1,0 @@
-python main.py --config configs/config.yaml
