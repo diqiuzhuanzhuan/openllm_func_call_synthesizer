@@ -92,6 +92,7 @@ llama_factory:
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", xlsx, "parquet"
   name: "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_llama_factory"
+  split_ratio: -1
   score_field: "score"
   score_threshold: 8
   system_prompt: "You are a helpful assistant. \
