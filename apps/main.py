@@ -279,10 +279,18 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     ).remove_columns(dataset["train"].column_names)
     output_dir = Path(llama_factory_cfg.output_dir) / llama_factory_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
+    if llama_factory_cfg.split_ratio > 0 and llama_factory_cfg.split_ratio < 1:
+        openai_format_dataset = openai_format_dataset["train"].train_test_split(
+            test_size=1 - llama_factory_cfg.split_ratio
+        )
 
     openai_format_dataset["train"].to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
-    openai_format_dataset["train"].to_csv(str(output_dir / "output.csv"))
-    openai_format_dataset["train"].to_parquet(str(output_dir / "output.parquet"))
+    openai_format_dataset["train"].to_csv(str(output_dir / "train.csv"))
+    openai_format_dataset["train"].to_parquet(str(output_dir / "train.parquet"))
+    if "test" in openai_format_dataset:
+        openai_format_dataset["test"].to_json(str(output_dir / "test.jsonl"), orient="records", lines=True)
+        openai_format_dataset["test"].to_csv(str(output_dir / "test.csv"))
+        openai_format_dataset["test"].to_parquet(str(output_dir / "test.parquet"))
 
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
@@ -301,10 +309,19 @@ def main(cfg: DictConfig):
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
+<<<<<<< HEAD
     # if cfg.synthesizer.query_generation.enable:
     #     generate_query_dataset(cfg, function_docs=openai_format_tools)
     generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
+=======
+    if cfg.synthesizer.query_generation.enable:
+        generate_query_dataset(cfg, function_docs=openai_format_tools)
+    if cfg.synthesizer.function_call_generation.enable:
+        generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    if cfg.synthesizer.critic.enable:
+        critic_function_call_dataset(cfg)
+>>>>>>> e481964e6881e697abb27f0e3872859880a6936a
     if cfg.synthesizer.llama_factory.enable:
         create_llama_factory_compatible_dataset(cfg)
 

@@ -20,7 +20,7 @@ repos:
         - --exclude
         - src/openllm_func_call_synthesizer/data_process/data_process_utils.ipynb
         - --exclude
-        - tests/Standard_Test_Local_Model/test_one_data.ipynb
+        - tests/standard_test_local_model/test_one_data.ipynb
         - --exclude
         - src/openllm_func_call_synthesizer/data_process/generate_train_dataset_lora.py
         - --exclude
@@ -32,7 +32,7 @@ repos:
           - --exclude
           - src/openllm_func_call_synthesizer/data_process/data_process_utils.ipynb
           - --exclude
-          - tests/Standard_Test_Local_Model/test_one_data.ipynb
+          - tests/standard_test_local_model/test_one_data.ipynb
           - --exclude
           - src/openllm_func_call_synthesizer/data_process/generate_train_dataset_lora.py
 

@@ -441,6 +441,7 @@ def fix_inner_single_quotes(s):
                 return None
     return None
 
+
 def robust_parse_v2(x):
     """
     增强版解析函数：
@@ -450,9 +451,9 @@ def robust_parse_v2(x):
     """
     if isinstance(x, dict):
         return x
-    
+
     parsed_result = None
-    
+
     if isinstance(x, str):
         # --- 尝试 1: 标准 JSON (处理 "null", 双引号) ---
         try:
@@ -478,13 +479,13 @@ def robust_parse_v2(x):
                     return {}
 
     # --- 统一处理结果 ---
-    
+
     # 情况 A: 解析出来是列表 (e.g. [{"intent":...}]) -> 取第一个元素
     if isinstance(parsed_result, list):
         if len(parsed_result) > 0 and isinstance(parsed_result[0], dict):
             return parsed_result[0]
         else:
-            return {} # 列表为空或里面不是字典
+            return {}  # 列表为空或里面不是字典
 
     # 情况 B: 解析出来是字典 -> 直接返回
     if isinstance(parsed_result, dict):
