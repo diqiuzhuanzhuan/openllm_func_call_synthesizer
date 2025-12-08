@@ -512,12 +512,16 @@ def postprocess_data(config):
     # 保证llm_response为dict
     df[llm_response_col] = df[llm_response_col].apply(robust_parse_v2)
 
-    if config["model_type"] == "uliya_intent":
-        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
-    else:
-        df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
-        df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
+    df[llm_intent_col] = df[llm_response_col].apply(
+        lambda x: x.get("intent", "") if isinstance(x, dict) and "intent" in x.keys() else (x.get("name", "") if isinstance(x, dict) and "name" in x.keys()
+                else ""))
+    
+    df[llm_slot_col] = df[llm_response_col].apply(
+        lambda x: x.get("slots", "") if isinstance(x, dict) and "slots" in x.keys() else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys()
+                else ""))
+    # else:
+    #     df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
+    #     df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
 
     # 处理Ground Truth列
     gt_col = config["ground_truth"]
@@ -527,12 +531,20 @@ def postprocess_data(config):
     # 保证为dict
     df[gt_col] = df[gt_col].apply(robust_parse_v2)
 
-    if config["model_type"] == "uliya_intent":
-        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
-    else:
-        df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
-        df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
+
+    df[gt_intent_col] = df[gt_col].apply(
+        lambda x: x.get("intent", "") if isinstance(x, dict) and "intent" in x.keys() else (x.get("name", "") if isinstance(x, dict) and "name" in x.keys()
+                else ""))
+    df[gt_slot_col] = df[gt_col].apply(
+        lambda x: x.get("slots", "") if isinstance(x, dict) and "slots" in x.keys() else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys()
+                else ""))
+
+    # if config["model_type"] == "uliya_intent":
+    #     df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
+    #     df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
+    # else:
+    #     df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
+    #     df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
 
     df.to_excel(output_file, index=False)
     print(f"postprocess_data save to: {output_file}")
@@ -578,7 +590,7 @@ if __name__ == "__main__":
         print("------begin evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
         evaluate_module(config, data=df)
         print("------end evaluate------", time.strftime("%Y-%m-%d %H:%M:%S"))
-        get_confusion_matrix(df)
+        get_confusion_matrix(df, config["confusion_matrix_file"])
         print("------end calculate confusion matrix------", time.strftime("%Y-%m-%d %H:%M:%S"))
     # 步骤4: 纯字符串输出评测
     if steps_config.get("evaluate_output_str", False):
