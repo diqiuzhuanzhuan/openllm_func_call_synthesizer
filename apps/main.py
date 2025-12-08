@@ -296,8 +296,10 @@ def main(cfg: DictConfig):
 
     if cfg.synthesizer.query_generation.enable:
         generate_query_dataset(cfg, function_docs=openai_format_tools)
-    generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
-    critic_function_call_dataset(cfg)
+    if cfg.synthesizer.function_call_generation.enable:
+        generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
+    if cfg.synthesizer.critic.enable:
+        critic_function_call_dataset(cfg)
     if cfg.synthesizer.llama_factory.enable:
         create_llama_factory_compatible_dataset(cfg)
 
