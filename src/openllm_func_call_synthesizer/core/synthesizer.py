@@ -55,36 +55,85 @@ class FunctionCallGenerator(curator.LLM):
             parsed.append({"name": name, "arguments": args})
 
         return json.dumps(parsed, ensure_ascii=False, indent=2)
+    
+    def _deduplicate_input_ls(self, input_ls):
+        """
+        Deduplicate input_ls based on the fields: prompt, function_call, answer.
+        If all three fields are identical (ignoring 'tool_call' id等唯一id), keep only one instance.
 
-    def parse(self, input: dict, response) -> dict:
-        """Parse the response to extract the function call or the message."""
-        input["prompt"] = self.prompt(input)
-        if "tool_calls" in response["choices"][0]["message"] and response["choices"][0]["message"]["tool_calls"]:
-            input["function_call"] = self._parse_function_call(response["choices"][0]["message"]["tool_calls"])
-            input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
+        由于'answer'字段中包含了'tool_calls'的'id'，每个调用的id都不同，导致去重失败。
+        所以需要在比较时忽略'tool_call'下的'id'字段！
+        """
+        import json
+        def norm_answer(answer):
+            # answer 是json字符串，parse出来再删掉所有tool_calls的id，序列化回字符串
+            try:
+                data = json.loads(answer)
+            except Exception:
+                return answer # return 原本字符串
+            # 删除所有tool_calls下的id字段
+            if isinstance(data, dict) and "tool_calls" in data and isinstance(data["tool_calls"], list):
+                for tc in data["tool_calls"]:
+                    if isinstance(tc, dict) and "id" in tc:
+                        tc.pop("id")
+            try:
+                return json.dumps(data, ensure_ascii=False, sort_keys=True)
+            except Exception:
+                return answer
 
-        else:
-            # Handle the case where the model returns a string instead of a function call
-            function_call = extract_format(format="json", content=response["choices"][0]["message"]["content"])
-            if function_call is None:
-                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
-                input["function_call"] = None
-                # raise ValueError("The model did not return a valid function call.")
+        seen = set()
+        deduped = []
+        for item in input_ls:
+            key = (
+                item.get("prompt", ""),
+                item.get("function_call", ""),
+                norm_answer(item.get("answer", ""))
+            )
+            if key not in seen:
+                seen.add(key)
+                deduped.append(item)
+        return deduped
+
+    def parse(self, input: dict, response) -> list:
+        """Parse each choice in the response to extract the function call or the message."""
+        input_ls = []
+        prompt = self.prompt(input)
+        print('--------------choices response------------------', response["choices"])
+        for choice in response["choices"]:
+            this_input = dict(input)  # make a shallow copy
+            this_input["prompt"] = prompt
+            
+            message = choice.get("message", {})
+            if "tool_calls" in message and message["tool_calls"]:
+                this_input["function_call"] = self._parse_function_call(message["tool_calls"])
+                this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
             else:
-                input["function_call"] = json.dumps(function_call, ensure_ascii=False)
-                input["answer"] = json.dumps(response["choices"][0]["message"], ensure_ascii=False, indent=2)
+                # Handle the case where the model returns a string instead of a function call
+                function_call = extract_format(format="json", content=message.get("content", ""))
+                if function_call is None:
+                    this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
+                    this_input["function_call"] = None
+                    # raise ValueError("The model did not return a valid function call.")
+                else:
+                    this_input["function_call"] = json.dumps(function_call, ensure_ascii=False)
+                    this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
+            
+            print('----input------', this_input)
 
-        pretty.pprint("query: ")
-        pretty.pprint(input["query"])
-        if "answer" in input:
-            pretty.pprint("answer: ")
-            pretty.pprint(input["answer"])
-        if "function_call" in input:
-            pretty.pprint("function_call: ")
-            pretty.pprint(input["function_call"])
+            pretty.pprint("query: ")
+            pretty.pprint(this_input["query"])
+            if "answer" in this_input:
+                pretty.pprint("answer: ")
+                pretty.pprint(this_input["answer"])
+            if "function_call" in this_input:
+                pretty.pprint("function_call: ")
+                pretty.pprint(this_input["function_call"])
 
-        return input
-
+            input_ls.append(this_input)
+        # Deduplicate before return
+        input_ls = self._deduplicate_input_ls(input_ls)
+        print(' ------------ deduped input list ------------ ', input_ls)
+        return input_ls
 
 class QueryFunc(BaseModel):
     query: str = Field(..., description="The natural language query")

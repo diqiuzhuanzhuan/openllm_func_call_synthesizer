@@ -1,11 +1,10 @@
 import pandas as pd
-df = pd.read_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1127/test_all_evaluate_hybrid.xlsx')
-df.shape, df.columns
+
 
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
-def get_confusion_matrix(df):
+def get_confusion_matrix(df, output_file):
     df['gt_intent'] = df['gt_intent'].apply(str)
     df['llm_intent'] = df['llm_intent'].apply(str)
 
@@ -41,8 +40,20 @@ def get_confusion_matrix(df):
 
     # 保留所有值小数点后4位
     cm_df = cm_df.round(4)
-    cm_df.to_excel('/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1127/test_all_evaluate_hybrid_confusion_matrix.xlsx')
+    cm_df.to_excel(output_file)
     print(cm_df)
+    
+    return cm_df
 
 if __name__ == "__main__":
-    get_confusion_matrix(df)
+    input_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/mcp_intent_1204/test_all_evaluate_hybrid.xlsx"
+    output_file = '/data0/work/SusieSu/project/openllm_datas_and_temp_codes/mcp_intent_1204/test_all_evaluate_hybrid_confusion_matrix.xlsx'
+    df = pd.read_excel(input_file)
+    print(df.shape, df.columns)
+
+    cm_df = get_confusion_matrix(df)
+
+    # 保留所有值小数点后4位
+    cm_df = cm_df.round(4)
+    cm_df.to_excel(output_file)
+    print(cm_df)

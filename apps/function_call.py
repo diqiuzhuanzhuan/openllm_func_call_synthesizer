@@ -45,7 +45,8 @@ def main():
 
     from openai import OpenAI
 
-    client = OpenAI(base_url="http://192.168.111.6:8000/v1", api_key="dummy")
+    # client = OpenAI(base_url="http://192.168.111.6:8000/v1", api_key="dummy")
+    client = OpenAI(base_url="http://192.168.111.4:8009/v1", api_key="dummy")
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
     ]
@@ -79,7 +80,7 @@ def main():
             }
 
         response = client.chat.completions.create(
-            model="qwen",
+            model="qwen3_1.7b_mcp_v0", #"qwen",
             messages=messages,
             tools=openai_format_tools["tools"],  # ⚡ 告诉模型有哪些工具可调用
         )

@@ -214,3 +214,6 @@ test.ipynb
 *.json
 *.csv
 .env
+default_susie.yaml
+config.yaml
+start_test.sh

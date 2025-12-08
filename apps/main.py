@@ -43,7 +43,6 @@ from openllm_func_call_synthesizer.utils.dataset_utils import (
     format_openai,
 )
 
-
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
     """Get tools from MCP server."""
     mcp_cfg = mcp_cfg
@@ -184,6 +183,7 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
 
 
 def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
+    import json
     # Load the function dataset
     function_call_cfg = cfg.synthesizer.function_call_generation
     function_dataset_path = Path(function_call_cfg.function_dataset)
@@ -206,22 +206,34 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
     function_call_generator = FunctionCallGenerator(
         **fc_kwargs,
-        generation_params={"tools": function_docs["tools"]},
+        generation_params={"tools": function_docs["tools"],
+                           "temperature": 2,
+                           "n": 5}
     )
     max_num = function_call_cfg.max_num
     if max_num > 0:
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
+    # dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
     fcg = function_call_generator(dataset=dataset)
-
-    # write function dataset to disk
+    print('---------------------fcg.dataset-------', fcg.dataset)
+    
+    # 这里fcg.dataset每行都是一个dict，直接输出即可
     output_dir = Path(function_call_cfg.output_dir) / function_call_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
-    fcg.dataset.to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
-    fcg.dataset.to_csv(str(output_dir / "output.csv"))
-    fcg.dataset.to_parquet(str(output_dir / "output.parquet"))
+
+    # 专门写 jsonl，每行为一个dict
+    jsonl_path = output_dir / "train.jsonl"
+    import json
+    with open(jsonl_path, "w", encoding="utf-8") as f:
+        for row in fcg.dataset:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+    # 可选其它格式输出
+    import pandas as pd
+    pd.DataFrame(fcg.dataset).to_csv(str(output_dir / "output.csv"), index=False)
+    pd.DataFrame(fcg.dataset).to_parquet(str(output_dir / "output.parquet"), index=False)
     print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
 
 
@@ -280,14 +292,17 @@ def main(cfg: DictConfig):
     print("loading tools from MCP server:")
     loop = asyncio.get_event_loop()
     mcp_tools = loop.run_until_complete(get_mcp_tools(mcp_cfg=cfg.synthesizer.mcp_servers["ugreen_mcp"]))
+    print("------------mcp_tools------------", mcp_tools)
     openai_format_tools = convert_to_openai_tools(mcp_tools)
     pretty.pprint(openai_format_tools)
+    with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/data_process/train_data_prompt.json", "w", encoding="utf-8") as f:
+        json.dump(openai_format_tools['tools'], f, ensure_ascii=False, indent=4)
     synth_cfg = cfg.synthesizer
     print("synth_config: ")
     pretty.pprint(synth_cfg)
 
-    if cfg.synthesizer.query_generation.enable:
-        generate_query_dataset(cfg, function_docs=openai_format_tools)
+    # if cfg.synthesizer.query_generation.enable:
+    #     generate_query_dataset(cfg, function_docs=openai_format_tools)
     generate_function_call_dataset(cfg, mcp_tools=mcp_tools)
     critic_function_call_dataset(cfg)
     if cfg.synthesizer.llama_factory.enable:

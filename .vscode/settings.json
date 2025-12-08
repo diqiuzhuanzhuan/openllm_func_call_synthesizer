@@ -4,5 +4,8 @@
     "**/__pycache__": true,
     "**/__pycache__.*": true
   },
-  "python.envFile": "${workspaceFolder}/.env"
+  "python.languageServer": "Pylance",
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.pythonPath": "${workspaceFolder}/.venv/bin/python"
 }
