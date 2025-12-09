@@ -1,1 +1,1 @@
-python main.py --config configs/config.yaml
+nohup python -u main.py --config configs/config.yaml > 1208.log 2>&1 &

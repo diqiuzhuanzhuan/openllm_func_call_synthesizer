@@ -27,7 +27,7 @@ num_processes: 3
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
-model_file_path: "/data0/work/SusieSu/project/workspace/weizhong_LLaMA-Factory-main/saves/qwen3_1.7b_1204_intent_mcp/sft/checkpoint-800"
+model_file_path: "/data0/work/SusieSu/project/workspace/LLaMA-Factory-main/saves/qwen3_1.7b_1205_function_call_batch8/sft/checkpoint-600"
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
@@ -41,8 +41,8 @@ model_name: "mcp_intent_1016:q4_k_m"
 temperature: 0.01
 
 # 通过指定 root 目录来简化路径
-root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/mcp_data_1204_for_train_v1"
-output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/mcp_data_1204_for_train_v1"
+root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208"
+output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208"
 
 # 选择使用哪个系统提示词（仅用于向后兼容）
 prompt_key: "mcp"  # uliya or mcp
@@ -135,8 +135,8 @@ llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会�
 # json_prompt_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/prompt_dict.json"  # JSON文件路径
 
 ## 方式2: 从txt 读取prompt
-system_prompt_mcp_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/mcp_intent_prompt_1204.txt"
-system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/mcp_intent_prompt_1204.txt"
+system_prompt_mcp_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prmpt.txt"
+system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prmpt.txt"
 
 
 # 如果不使用JSON文件，可以直接在这里写system_prompt
