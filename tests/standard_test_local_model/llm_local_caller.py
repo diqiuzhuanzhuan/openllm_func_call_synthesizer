@@ -31,7 +31,7 @@ def load_model_and_tokenizer(model_name):
     return tokenizer, model
 
 
-with open("/data0/work/SusieSu/project/uliya/mcp/function_call_tools.json") as f:
+with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/function_docs.json") as f:
     fun_ = json.load(f)
 
 FUNCTIONS = fun_
@@ -49,6 +49,9 @@ def get_response(tokenizer, model, prompt):
     Returns:
         生成的文本
     """
+    function_call_system_prompt = "You are a helpful assistant. You are given a query and a function call. \
+    You need to determine if the function call is correct for the query."
+    
     messages = [{"role": "system", "content": function_call_system_prompt}, {"role": "user", "content": prompt}]
     text = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True, enable_thinking=False, tools=FUNCTIONS

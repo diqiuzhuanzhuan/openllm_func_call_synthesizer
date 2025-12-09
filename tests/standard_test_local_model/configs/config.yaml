@@ -10,7 +10,7 @@
 # 4. API模式：通过HTTP API调用远程模型服务（无需GPU）
 #
 # 运行命令：
-#   python evaluate_local_model.py --config config.yaml
+#   python evaluate_local_model.py  config.yaml
 #
 # ================================================================================
 
@@ -19,11 +19,12 @@
 # false 或不设置 = 本地模型模式（需要GPU）
 # true = API模式（通过HTTP API调用远程模型）
 use_api: false
+model_type:  vllm_api # "local" or "ollama_api" or "vllm_api"
 
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "4,5,6,7"
-num_processes: 3
+cuda_device: "1,6,7"
+num_processes: 2
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
@@ -42,7 +43,7 @@ temperature: 0.01
 
 # 通过指定 root 目录来简化路径
 root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208"
-output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208"
+output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208_v2"
 
 # 选择使用哪个系统提示词（仅用于向后兼容）
 prompt_key: "mcp"  # uliya or mcp
@@ -78,26 +79,20 @@ mcp_intent_list:
 -  "control_cooling_fan_speed"
 -  "docker_search_image"
 
-# uliya_intent_list:
-#   - "general_query"
-#   - "summary_document"
-#   # - "search_document"
-#   - "translate"
-
 # ========== 输入输出文件配置 ==========
 # 支持 ${root} 变量，代码要先解析
 input_file: "${root}/test_all.xlsx"
-output_file: "${root}/test_all_output_hybrid.xlsx"
+output_file: "${output_root}/test_all_llm_response.xlsx"
 
 # 数据后处理输入输出
-postprocess_input_file: "${root}/test_all_output_hybrid.xlsx"
-postprocess_output_file: "${root}/test_all_processed_hybrid.xlsx"
+postprocess_input_file: "${output_root}/test_all_llm_response.xlsx"
+postprocess_output_file: "${output_root}/test_all_processed_hybrid.xlsx"
 
 # 评测输入输出文件
-evaluate_input_file: "${root}/test_all_processed_hybrid.xlsx"
-evaluate_output_file: "${root}/test_all_evaluate_hybrid.xlsx"
+evaluate_input_file: "${output_root}/test_all_processed_hybrid.xlsx"
+evaluate_output_file: "${output_root}/test_all_evaluate_hybrid.xlsx"
 
-confusion_matrix_file: "${root}/test_all_evaluate_hybrid_confusion_matrix.xlsx"
+confusion_matrix_file: "${output_root}/test_all_evaluate_hybrid_confusion_matrix.xlsx"
 
 # #evaluate_output_str 输入输出文件
 # evaluate_output_str_input_file: "${root}/test_mcp_1017_with_gt_v3.xlsx"
@@ -135,12 +130,8 @@ llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会�
 # json_prompt_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/prompt_dict.json"  # JSON文件路径
 
 ## 方式2: 从txt 读取prompt
-system_prompt_mcp_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prmpt.txt"
-system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prmpt.txt"
-
-
-# 如果不使用JSON文件，可以直接在这里写system_prompt
-
+system_prompt_mcp_file:  "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/tmp.json"
+system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/tmp.json"
 
 # # ========== 评测配置 ==========
 # # 是否进行评测 (已被steps.evaluate替代，保留兼容性)

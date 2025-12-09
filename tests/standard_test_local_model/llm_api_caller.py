@@ -139,7 +139,7 @@ def batch_llm_predict_api(config):
 
     # 读取数据并预处理
     df = pd.read_excel(config["input_file"])
-    df = df.iloc[0:30]
+    # df = df.iloc[0:30]
     df = preprocess_data(df, config)
 
     # 获取模式配置

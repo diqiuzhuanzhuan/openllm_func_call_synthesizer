@@ -70,7 +70,7 @@ function_call_generation:
 
 critic:
   enable: True
-  function_call_dataset: "data/function_call_gpt_4o"
+  function_call_dataset: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/use_malong_critic"
   output_dir: "data"
   # cirtic need 'query', 'label', 'task_prompt'
   query_field: "query"

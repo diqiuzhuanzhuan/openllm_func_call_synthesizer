@@ -2,15 +2,17 @@ import argparse
 import ast
 import json
 import time
-
+import os
 import pandas as pd
 import yaml
 from calculate_confusion_matrix import get_confusion_matrix
 from llm_api_caller import batch_llm_predict_api
+from vllm_api_caller import get_vllm_response
 
 # 导入本地模型和API调用模块
 from llm_local_caller import batch_llm_predict_threaded
 
+FUNCTION_CALL_SYSTEM_PROMPT = "You are a helpful assistant. You are given a query and a function call.  You need to determine if the function call is correct for the query."
 
 def load_config(config_file):
     """
@@ -18,8 +20,6 @@ def load_config(config_file):
     如果配置了prompt_file和prompt_key，会从JSON文件读取system_prompt
     支持 ${root} 等变量替换
     """
-    import os
-
     with open(config_file, encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
@@ -202,7 +202,18 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
 
     # 保证字段转dict
     data[ground_truth_slot] = data[ground_truth_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
-    data[llm_slot] = data[llm_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
+    import ast
+
+    def safe_eval_slot(x):
+        if isinstance(x, str) and x.strip().startswith(("{", "[")):
+            try:
+                return ast.literal_eval(x)
+            except Exception as e:
+                print(f"[safe_eval_slot] 解析失败: {x}, error: {e}")
+                return x  # 返回原始字符串或可返回None，根据需求
+        return x
+
+    data[llm_slot] = data[llm_slot].apply(safe_eval_slot)
 
     # 函数/槽分开比对
     data["function_same"] = data.apply(lambda x: True if x[ground_truth_intent] == x[llm_intent] else False, axis=1)
@@ -449,6 +460,7 @@ def robust_parse_v2(x):
     1. 优先尝试标准 JSON 解析 (支持 null)
     2. 失败则尝试 Python AST 解析 (支持 None, 单引号)
     3. 自动解包列表 (如果模型输出了List包含Dict)
+    如果解析出来不是dict，保留原始结果
     """
     if isinstance(x, dict):
         return x
@@ -477,23 +489,27 @@ def robust_parse_v2(x):
                         parsed_result = json.loads(x_json_like)
                 except Exception:
                     print(f"所有方式均失败: {x}")
-                    return {}
+                    return x  # 保留原始结果
 
     # --- 统一处理结果 ---
 
-    # 情况 A: 解析出来是列表 (e.g. [{"intent":...}]) -> 取第一个元素
+    # 情况 A: 解析出来是列表 (e.g. [{"intent":...}]) -> 取第一个元素，如果可用，否则保留原始
     if isinstance(parsed_result, list):
         if len(parsed_result) > 0 and isinstance(parsed_result[0], dict):
             return parsed_result[0]
         else:
-            return {}  # 列表为空或里面不是字典
+            return parsed_result  # 保留原始的list结果
 
     # 情况 B: 解析出来是字典 -> 直接返回
     if isinstance(parsed_result, dict):
         return parsed_result
 
-    # 情况 C: 其他奇怪类型 -> 返回空字典
-    return {}
+    # 情况 C: 其他奇怪类型 -> 保留解析出来的原始结果
+    if parsed_result is not None:
+        return parsed_result
+
+    # 如果什么都没解析到，就返回原始输入
+    return x
 
 
 def postprocess_data(config):
@@ -554,10 +570,9 @@ def postprocess_data(config):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="LLM Function Call Synthesizer with Configurable Evaluation")
-    parser.add_argument("--config", type=str, required=True, help="YAML配置文件路径")
-    args = parser.parse_args()
-    config = load_config(args.config)
+    import sys
+    config_path = sys.argv[1] if len(sys.argv) > 1 else "configs/config.yaml"
+    config = load_config(config_path)
 
     # 根据配置文件中的steps配置自动执行相应步骤
     steps_config = config.get("steps", {})
@@ -571,10 +586,23 @@ if __name__ == "__main__":
     if steps_config.get("inference", False):
         print("------begin inference------", time.strftime("%Y-%m-%d %H:%M:%S"))
         # 判断是使用本地模型还是API
-        use_api = config.get("use_api", False)
-        if use_api:
+        model_type = config.get("model_type", False)
+
+        if model_type == "ollama_api":
             print("使用API模式进行推理")
             df = batch_llm_predict_api(config)
+
+        elif model_type == "vllm_api":
+            df = pd.read_excel(config.get("input_file", ""))
+            df = df.iloc[0:5]
+            print(f"df.shape: {df.shape}", df.columns)
+            print("使用vLLM API模式进行推理")
+            input_field = config.get("input_field", "")
+            print(f"input_field: {input_field}")
+            df['llm_response'] = df[input_field].apply(lambda x: get_vllm_response(x, FUNCTION_CALL_SYSTEM_PROMPT))
+
+            df.to_excel(config.get("output_file", ""))
+
         else:
             print("使用本地模型进行推理")
             # df = batch_llm_predict(config)
