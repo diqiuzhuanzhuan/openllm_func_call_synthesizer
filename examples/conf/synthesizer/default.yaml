@@ -29,21 +29,21 @@ query_generation:
       models:
         - "gpt-4o"
         - "gpt-4o-mini"
-        - "gpt-5-mini-2025-08-07"
         - "gpt-4.1"
         - "gpt-5-mini"
+        - "gpt-5-2025-08-07"
       backend_params:
         max_tokens_per_minute: 1_000_000
         require_all_responses: False
 
-    anthropic:
-      backend: "litellm"
-      models:
-        - "anthropic/claude-sonnet-4-20250514"
-        - "anthropic/claude-sonnet-4-5-20250929"
-      backend_params:
-        max_tokens_per_minute: 1_000_000
-        require_all_responses: False
+    # anthropic:
+    #   backend: "litellm"
+    #   models:
+    #     - "anthropic/claude-sonnet-4-20250514"
+    #     - "anthropic/claude-sonnet-4-5-20250929"
+    #   backend_params:
+    #     max_tokens_per_minute: 1_000_000
+    #     require_all_responses: False
 
     google:
       backend: "openai"
@@ -67,6 +67,8 @@ function_call_generation:
     backend_params:
       require_all_responses: False
       max_tokens_per_minute: 8_000_000
+    generation_params:
+      max_tokens: 2048
 
 critic:
   enable: True

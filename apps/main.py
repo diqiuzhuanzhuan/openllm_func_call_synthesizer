@@ -26,6 +26,7 @@ from pathlib import Path
 
 import hydra
 from datasets import concatenate_datasets, load_dataset
+from dotenv import load_dotenv
 from fastmcp import Client
 from omegaconf import DictConfig, OmegaConf
 from rich import pretty
@@ -42,6 +43,8 @@ from openllm_func_call_synthesizer.utils import (
 from openllm_func_call_synthesizer.utils.dataset_utils import (
     format_openai,
 )
+
+load_dotenv()
 
 
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
@@ -184,8 +187,6 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
 
 
 def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
-    import json
-
     # Load the function dataset
     function_call_cfg = cfg.synthesizer.function_call_generation
     function_dataset_path = Path(function_call_cfg.function_dataset)
@@ -204,11 +205,9 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     # print(f"sampled {len(sampled)} functions: {sampled}")
     # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
-
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
-    function_call_generator = FunctionCallGenerator(
-        **fc_kwargs, generation_params={"tools": function_docs["tools"], "temperature": 2, "n": 5}
-    )
+    fc_kwargs.get("generation_params", {}).update({"tools": function_docs["tools"]})
+    function_call_generator = FunctionCallGenerator(**fc_kwargs)
     max_num = function_call_cfg.max_num
     if max_num > 0:
         dataset = dataset["train"].select(range(max_num))
