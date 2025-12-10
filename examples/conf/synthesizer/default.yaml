@@ -36,14 +36,14 @@ query_generation:
         max_tokens_per_minute: 1_000_000
         require_all_responses: False
 
-    # anthropic:
-    #   backend: "litellm"
-    #   models:
-    #     - "anthropic/claude-sonnet-4-20250514"
-    #     - "anthropic/claude-sonnet-4-5-20250929"
-    #   backend_params:
-    #     max_tokens_per_minute: 1_000_000
-    #     require_all_responses: False
+    anthropic:
+      backend: "litellm"
+      models:
+        - "anthropic/claude-sonnet-4-20250514"
+        - "anthropic/claude-sonnet-4-5-20250929"
+      backend_params:
+        max_tokens_per_minute: 1_000_000
+        require_all_responses: False
 
     google:
       backend: "openai"
@@ -68,7 +68,7 @@ function_call_generation:
       require_all_responses: False
       max_tokens_per_minute: 8_000_000
     generation_params:
-      max_tokens: 2048
+      max_tokens: 4096
 
 critic:
   enable: True
