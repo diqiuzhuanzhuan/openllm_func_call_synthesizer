@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import ast
 import json
 import os
 import re
@@ -238,6 +239,33 @@ def write_json_file(data, file_path):
         print(f"写入 JSON 文件时出错: {e}")
 
 
+def read_jsonl(file_path):
+    """通用的读取jsonl文件为列表字典格式的数据"""
+    data = []
+    with open(file_path, encoding="utf-8") as fin:
+        for line in fin:
+            if line.strip():  # 跳过空行
+                data.append(json.loads(line))
+    if len(data) > 1:
+        if isinstance(data[0], dict):
+            print("data[0].keys()", data[0].keys())
+    return data
+
+
+def read_jsonl_to_df(file_path):
+    data = []
+    with open(file_path, encoding="utf-8") as fin:
+        for line in fin:
+            if line.strip():  # 跳过空行
+                data.append(json.loads(line))
+    if len(data) > 1:
+        if isinstance(data[0], dict):
+            print("data[0].keys()", data[0].keys())
+    df = pd.DataFrame(data)
+    print(df.shape, df.columns)
+    return df
+
+
 def format_value_counts(df, key_column):
     # 计算计数和占比
     counts = df[key_column].value_counts()
@@ -267,6 +295,68 @@ def format_value_counts(df, key_column):
 
     # print(result)
     return result
+
+
+def check_intent_arguments(row):
+    name = row.get("name")
+    arguments = row.get("arguments")
+    query = str(row.get("query", ""))
+    # arguments有可能是字符串格式的dict
+    if isinstance(arguments, str):
+        try:
+            arguments = ast.literal_eval(arguments)
+        except Exception:
+            return f"intent:{name} argument 解析失败"
+    if not isinstance(arguments, dict):
+        return f"intent:{name} argument 不是dict"
+    # 检查所有任务类型
+    if name == "create_album":
+        # album_name和album_type最少有一个
+        if not arguments.get("album_name") and not arguments.get("album_type"):
+            return "create_album 缺少 album_name 和 album_type"
+        # album_name 必须在query出现过
+        if arguments.get("album_name") and arguments["album_name"] not in query:
+            return f'create_album: album_name="{arguments["album_name"]}" 未出现在 query="{query}"'
+    elif name == "video_play_control":
+        # title和source最少有一个
+        if not arguments.get("title") and not arguments.get("source"):
+            return "video_play_control 缺少 title 和 source"
+        # title必须在query中出现
+        if arguments.get("title") and arguments["title"] not in query:
+            return f'video_play_control: title="{arguments["title"]}" 未出现在 query="{query}"'
+    elif name == "video_search_control":
+        if not arguments.get("title") and not arguments.get("source"):
+            return "video_search_control 缺少 title 和 source"
+        if arguments.get("title") and arguments["title"] not in query:
+            return f'video_search_control: title="{arguments["title"]}" 未出现在 query="{query}"'
+    elif name == "search_photos":
+        # keyword 必须在query中出现
+        if not arguments.get("keyword"):
+            return "search_photos 缺少 keyword"
+        if arguments["keyword"] not in query:
+            return f'search_photos: keyword="{arguments["keyword"]}" 未在 query="{query}" 中'
+    elif name == "music_play_control":
+        if not arguments.get("title") and not arguments.get("source"):
+            return "music_play_control 缺少 title 和 source"
+        if arguments.get("title") and arguments["title"] not in query:
+            return f'music_play_control: title="{arguments["title"]}" 未出现在 query="{query}"'
+    elif name == "get_album_list":
+        if not arguments.get("album_type") and not arguments.get("keyword"):
+            return "get_album_list 缺少 album_type 和 keyword"
+        # keyword必须在query中出现（如果有keyword）
+        if arguments.get("keyword") and arguments["keyword"] not in query:
+            return f'get_album_list: keyword="{arguments["keyword"]}" 未在 query="{query}" 中'
+    elif name == "music_search_control":
+        if not arguments.get("keyword"):
+            return "music_search_control 缺少 keyword"
+        if arguments["keyword"] not in query:
+            return f'music_search_control: keyword="{arguments["keyword"]}" 未在 query="{query}" 中'
+    elif name == "adjust_led_brightness":
+        # 必须有action字段
+        if "action" not in arguments:
+            return "adjust_led_brightness 缺少 action字段"
+    # 没问题
+    return ""
 
 
 def pick_unique(
