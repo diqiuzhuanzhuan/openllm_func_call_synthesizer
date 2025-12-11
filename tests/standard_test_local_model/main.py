@@ -1,18 +1,20 @@
-import argparse
 import ast
 import json
-import time
 import os
+import time
+
 import pandas as pd
 import yaml
 from calculate_confusion_matrix import get_confusion_matrix
 from llm_api_caller import batch_llm_predict_api
-from vllm_api_caller import get_vllm_response
 
 # 导入本地模型和API调用模块
 from llm_local_caller import batch_llm_predict_threaded
+from vllm_api_caller import get_vllm_response
 
-FUNCTION_CALL_SYSTEM_PROMPT = "You are a helpful assistant. You are given a query and a function call.  You need to determine if the function call is correct for the query."
+FUNCTION_CALL_SYSTEM_PROMPT = """You are a helpful assistant. You are given a query and a function call.
+  You need to determine if the function call is correct for the query."""
+
 
 def load_config(config_file):
     """
@@ -531,12 +533,16 @@ def postprocess_data(config):
     df[llm_response_col] = df[llm_response_col].apply(robust_parse_v2)
 
     df[llm_intent_col] = df[llm_response_col].apply(
-        lambda x: x.get("intent", "") if isinstance(x, dict) and "intent" in x.keys() else (x.get("name", "") if isinstance(x, dict) and "name" in x.keys()
-                else ""))
-    
+        lambda x: x.get("intent", "unknown")
+        if isinstance(x, dict) and "intent" in x.keys()
+        else (x.get("name", "unknown") if isinstance(x, dict) and "name" in x.keys() else "")
+    )
+
     df[llm_slot_col] = df[llm_response_col].apply(
-        lambda x: x.get("slots", "") if isinstance(x, dict) and "slots" in x.keys() else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys()
-                else ""))
+        lambda x: x.get("slots", {})
+        if isinstance(x, dict) and "slots" in x.keys()
+        else (x.get("arguments", {}) if isinstance(x, dict) and "arguments" in x.keys() else "")
+    )
     # else:
     #     df[llm_intent_col] = df[llm_response_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
     #     df[llm_slot_col] = df[llm_response_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
@@ -549,13 +555,16 @@ def postprocess_data(config):
     # 保证为dict
     df[gt_col] = df[gt_col].apply(robust_parse_v2)
 
-
     df[gt_intent_col] = df[gt_col].apply(
-        lambda x: x.get("intent", "") if isinstance(x, dict) and "intent" in x.keys() else (x.get("name", "") if isinstance(x, dict) and "name" in x.keys()
-                else ""))
+        lambda x: x.get("intent", "")
+        if isinstance(x, dict) and "intent" in x.keys()
+        else (x.get("name", "") if isinstance(x, dict) and "name" in x.keys() else "")
+    )
     df[gt_slot_col] = df[gt_col].apply(
-        lambda x: x.get("slots", "") if isinstance(x, dict) and "slots" in x.keys() else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys()
-                else ""))
+        lambda x: x.get("slots", "")
+        if isinstance(x, dict) and "slots" in x.keys()
+        else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys() else "")
+    )
 
     # if config["model_type"] == "uliya_intent":
     #     df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
@@ -571,6 +580,7 @@ def postprocess_data(config):
 
 if __name__ == "__main__":
     import sys
+
     config_path = sys.argv[1] if len(sys.argv) > 1 else "configs/config.yaml"
     config = load_config(config_path)
 
@@ -594,12 +604,12 @@ if __name__ == "__main__":
 
         elif model_type == "vllm_api":
             df = pd.read_excel(config.get("input_file", ""))
-            df = df.iloc[0:5]
+            # df = df.iloc[0:5]
             print(f"df.shape: {df.shape}", df.columns)
             print("使用vLLM API模式进行推理")
             input_field = config.get("input_field", "")
             print(f"input_field: {input_field}")
-            df['llm_response'] = df[input_field].apply(lambda x: get_vllm_response(x, FUNCTION_CALL_SYSTEM_PROMPT))
+            df["llm_response"] = df[input_field].apply(lambda x: get_vllm_response(x, FUNCTION_CALL_SYSTEM_PROMPT))
 
             df.to_excel(config.get("output_file", ""))
 

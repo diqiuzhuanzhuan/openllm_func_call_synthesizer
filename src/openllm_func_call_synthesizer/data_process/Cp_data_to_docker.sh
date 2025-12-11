@@ -8,6 +8,7 @@
 # python generate_functio_call_format_data.py
 # python data_process_for_train_pipline.py
 
+cp  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_data.xlsx  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train
 cp -rf /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/
 cd  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/mcp_data_1124_for_train
 cp -f mcp_train.json mcp_dev.json ../../
@@ -17,4 +18,4 @@ cp -f mcp_train.json mcp_dev.json ../../
 # cd /data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/data/mcp_train_data/mcp_data_1117_for_train
 # cp -f mcp_train.json mcp_dev.json ../../
 
-# scp -r  SusieSu@192.168.111.3:/data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/mcp_data_1124_for_train   
+# scp -r  SusieSu@192.168.111.3:/data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/mcp_data_1124_for_train

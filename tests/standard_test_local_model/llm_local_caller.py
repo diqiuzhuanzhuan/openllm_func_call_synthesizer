@@ -51,7 +51,7 @@ def get_response(tokenizer, model, prompt):
     """
     function_call_system_prompt = "You are a helpful assistant. You are given a query and a function call. \
     You need to determine if the function call is correct for the query."
-    
+
     messages = [{"role": "system", "content": function_call_system_prompt}, {"role": "user", "content": prompt}]
     text = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True, enable_thinking=False, tools=FUNCTIONS
@@ -364,8 +364,6 @@ def _run_hybrid_mode_mp(df, config, num_processes):
         if isinstance(result, dict):
             if result.get("intent", "") in ["", "unknown"]:
                 need_uliya = True
-        elif isinstance(result, str) and not result.strip():
-            need_uliya = True
         elif not result:
             need_uliya = True
 
