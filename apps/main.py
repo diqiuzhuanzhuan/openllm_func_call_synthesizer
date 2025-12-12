@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 
 import hydra
+import pandas as pd
 from datasets import concatenate_datasets, load_dataset
 from dotenv import load_dotenv
 from fastmcp import Client
@@ -44,7 +45,7 @@ from openllm_func_call_synthesizer.utils.dataset_utils import (
     format_openai,
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
@@ -213,7 +214,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    # dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
+    dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
     fcg = function_call_generator(dataset=dataset)
     print("---------------------fcg.dataset-------", fcg.dataset)
 
@@ -226,9 +227,6 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     with open(jsonl_path, "w", encoding="utf-8") as f:
         for row in fcg.dataset:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-    # 可选其它格式输出
-    import pandas as pd
 
     pd.DataFrame(fcg.dataset).to_csv(str(output_dir / "output.csv"), index=False)
     pd.DataFrame(fcg.dataset).to_parquet(str(output_dir / "output.parquet"), index=False)
