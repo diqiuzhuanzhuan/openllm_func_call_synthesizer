@@ -207,7 +207,9 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
-    fc_kwargs.get("generation_params", {}).update({"tools": function_docs["tools"]})
+    generation_params = fc_kwargs.get("generation_params", {})
+    generation_params.update({"tools": function_docs["tools"]})
+    fc_kwargs["generation_params"] = generation_params
     function_call_generator = FunctionCallGenerator(**fc_kwargs)
     max_num = function_call_cfg.max_num
     if max_num > 0:

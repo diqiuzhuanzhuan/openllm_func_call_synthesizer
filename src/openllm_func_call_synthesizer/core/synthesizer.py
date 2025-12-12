@@ -56,23 +56,26 @@ class FunctionCallGenerator(curator.LLM):
             parsed.append({"name": name, "arguments": args})
 
         return json.dumps(parsed, ensure_ascii=False, indent=2)
-    
+
     def _deduplicate_input_ls(self, input_ls):
         """
         Deduplicate input_ls based on the fields: prompt, function_call, answer.
         If all three fields are identical (ignoring 'tool_call' id等唯一id), keep only one instance.
 
-        由于'answer'字段中包含了'tool_calls'的'id'，每个调用的id都不同，导致去重失败。
-        所以需要在比较时忽略'tool_call'下的'id'字段！
+        Due to the fact that the 'answer' field contains the 'id' of 'tool_calls',
+        and each call has a different id, deduplication fails.
+        Therefore, when comparing, the 'id' field under 'tool_call' must be ignored!
+
         """
         import json
+
         def norm_answer(answer):
-            # answer 是json字符串，parse出来再删掉所有tool_calls的id，序列化回字符串
+            # the format of answer is a string of json, so we need to parse it first
             try:
                 data = json.loads(answer)
             except Exception:
-                return answer # return 原本字符串
-            # 删除所有tool_calls下的id字段
+                return answer  # just return the original answer if it's not a valid json
+            # remove the id field under tool_calls
             if isinstance(data, dict) and "tool_calls" in data and isinstance(data["tool_calls"], list):
                 for tc in data["tool_calls"]:
                     if isinstance(tc, dict) and "id" in tc:
@@ -85,11 +88,7 @@ class FunctionCallGenerator(curator.LLM):
         seen = set()
         deduped = []
         for item in input_ls:
-            key = (
-                item.get("prompt", ""),
-                item.get("function_call", ""),
-                norm_answer(item.get("answer", ""))
-            )
+            key = (item.get("prompt", ""), item.get("function_call", ""), norm_answer(item.get("answer", "")))
             if key not in seen:
                 seen.add(key)
                 deduped.append(item)
@@ -99,11 +98,11 @@ class FunctionCallGenerator(curator.LLM):
         """Parse each choice in the response to extract the function call or the message."""
         input_ls = []
         prompt = self.prompt(input)
-        print('--------------choices response------------------', response["choices"])
+        print("--------------choices response------------------", response["choices"])
         for choice in response["choices"]:
             this_input = dict(input)  # make a shallow copy
             this_input["prompt"] = prompt
-            
+
             message = choice.get("message", {})
             if "tool_calls" in message and message["tool_calls"]:
                 this_input["function_call"] = self._parse_function_call(message["tool_calls"])
@@ -118,8 +117,8 @@ class FunctionCallGenerator(curator.LLM):
                 else:
                     this_input["function_call"] = json.dumps(function_call, ensure_ascii=False)
                     this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
-            
-            print('----input------', this_input)
+
+            print("----input------", this_input)
 
             pretty.pprint("query: ")
             pretty.pprint(this_input["query"])
@@ -132,9 +131,11 @@ class FunctionCallGenerator(curator.LLM):
 
             input_ls.append(this_input)
         # Deduplicate before return
-        input_ls = self._deduplicate_input_ls(input_ls)
-        print(' ------------ deduped input list ------------ ', input_ls)
+        if len(input_ls) > 1:
+            input_ls = self._deduplicate_input_ls(input_ls)
+        print(" ------------ deduped input list ------------ ", input_ls)
         return input_ls
+
 
 class QueryFunc(BaseModel):
     query: str = Field(..., description="The natural language query")

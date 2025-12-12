@@ -27,7 +27,7 @@ All output must:
 ---
 
 ### 1️⃣ If a Seed Query is provided
-Produce **15–20 query variations** that preserve meaning and intent while covering the following diversity dimensions:
+Produce **20–30 query variations** that preserve meaning and intent while covering the following diversity dimensions:
 
 #### **Linguistic Variations**
 - Synonyms, paraphrases, or alternative phrasings
