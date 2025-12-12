@@ -91,7 +91,7 @@ critic:
 
 llama_factory:
   enable: True
-  critic_dataset: "data/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_20251212"
+  critic_dataset: "data/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07"
   output_dir: "data"
   output_format: "jsonl"   # or "json", "csv", xlsx, "parquet"
   name: "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_llama_factory"
