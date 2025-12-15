@@ -1,107 +1,180 @@
 import json
-import re
+import os
+import sys
+from random import shuffle
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
-from openllm_func_call_synthesizer.utils import check_intent_arguments
+sys.path.append("/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/utils")
 
-
-def read_jsonl(file_path):
-    """通用的读取jsonl文件为列表字典格式的数据"""
-    data = []
-    with open(file_path, encoding="utf-8") as fin:
-        for line in fin:
-            if line.strip():  # 跳过空行
-                data.append(json.loads(line))
-    if len(data) > 1:
-        if isinstance(data[0], dict):
-            print("data[0].keys()", data[0].keys())
-    return data
-
-
-def read_jsonl_to_df(file_path):
-    data = []
-    with open(file_path, encoding="utf-8") as fin:
-        for line in fin:
-            if line.strip():  # 跳过空行
-                data.append(json.loads(line))
-    if len(data) > 1:
-        if isinstance(data[0], dict):
-            print("data[0].keys()", data[0].keys())
-    df = pd.DataFrame(data)
-    print(df.shape, df.columns)
-    return df
+from data_process_utils import (
+    concat_df,
+    concat_excel_file,
+    count_score_and_proportion,
+    detect_language,
+    read_excel,
+    read_jsonl,
+    value_counts,
+    value_counts_by_language,
+)
+from utils import check_intent_arguments
 
 
 def get_intent_from_function_call(function_call):
     try:
-        return eval(function_call)[0]["name"], eval(function_call)[0]["arguments"]
+        tmp = json.loads(function_call)
+        return tmp[0].get("name", "unknown"), tmp[0].get("arguments", {})
     except Exception:
         return "unknown", {}
 
 
-def detect_language(input_text):
-    # 确保输入是字符串
-    if isinstance(input_text, str):
-        s = input_text.strip()
-        if re.search(r"[üöäß]|[ÄÖÜ]", s) or re.search(
-            r"\b(der|die|das|und|ein|nicht|ist|zu|in|den|mit|auf|für|sie|es|dem|von)\b", s, re.I
-        ):
-            return "ger"
-        if re.search(r"[\u3040-\u309F\u30A0-\u30FF]", s):
-            return "jap"
-        if re.search(r"[a-zA-Z]", s):
-            ascii_ratio = sum(1 for c in s if ord(c) < 128) / max(1, len(s))
-            if ascii_ratio > 0.7:
-                return "en"
-    return "zh"
+def process_function_call_data(root, source):
+    df = pd.read_csv(os.path.join(root, "output.csv")).fillna("[]")
+    print("input data shape, columns", df.shape, df.columns)
 
+    # 1.预处理， 统计分布， 提取name 和 aruguments
+    count_score_and_proportion(df)
 
-def count_score_and_proportion(df):
-    # 按分数降序排列
-    score_counts = (
-        df["score"]
-        .value_counts(ascending=False)
-        .to_frame()
-        .reset_index()
-        .rename(columns={"index": "score", "score": "count"})
-    )
-    print(score_counts)
+    df = df[df["score"] > 8]
+    print("score > 8 df.shape", df.shape)
 
-    # 统计 >8分的占比
-    above_8 = df[df["score"] > 8].shape[0]
-    total = df.shape[0]
-    proportion_above_8 = above_8 / total if total > 0 else 0
-    print(f"得分大于8分的占比: {proportion_above_8:.2%}")
+    df[["name", "arguments"]] = df["function_call"].apply(lambda x: pd.Series(get_intent_from_function_call(x)))
+    if "language" not in df.columns:
+        df["language"] = df["query"].apply(detect_language)
 
-    # 3. 应用到所有数据，输出不合格条目
+    df["source"] = source
+    print("-----------大于8分的name分布-------------------")
+    value_counts(df, "name")
+
+    print("df.shape", df.shape, df.columns)
+    print("-----------原始文件  >8分的 分布-------------------")
+    value_counts_by_language(df, "name")
+
+    # 2.数据必须字段检查
     df["argument_check_error"] = df.apply(check_intent_arguments, axis=1)
     errors = df[df["argument_check_error"] != ""]
-    print("存在问题的数据条数:", errors.shape[0])
-    print(errors[["query", "name", "arguments", "argument_check_error"]].head(10))
+    print("存在问题的数据条数:", errors.shape[0], errors.columns)
+    # print(errors[["query", "name", "arguments", "argument_check_error"]].head(10))
+
+    df2 = df[df["argument_check_error"] == ""]
+    df2 = df2[
+        ["query", "function_call", "answer", "score", "name", "arguments", "language", "source", "argument_check_error"]
+    ]
+    df2.to_excel(os.path.join(root, "train_processed.xlsx"))
+    # 只保存必要字段， 否则文件太大
+    errors.to_excel(os.path.join(root, "train_errors.xlsx"))
+    # 可以只存关键字段  [['query', 'dimension', 'language',  'provider', 'model',
+    #    'function_call', 'answer', 'score', 'name', 'arguments',
+    #    'source', 'argument_check_error']]
+    print("-----------去除问题数据后   >8分的 分布-------------------")
+    value_counts_by_language(df2, "name")
+
+    print("完成数据处理，处理前数据条数:", df.shape[0], "处理后数据条数:", df2.shape[0])
+
+    return df2
 
 
-df = read_jsonl_to_df(
-    "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/function_query_1210/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07/train.jsonl"
-)
+def split_fc_data(input_file, output_root):
+    fc_data = read_jsonl(input_file)
 
-count_score_and_proportion(df)
+    # 加载后先shuffle一次
+    shuffle(fc_data)
+    # 先切分出train和剩余部分（train: 0.8, 其余: 0.2）
+    fc_train, fc_rest = train_test_split(fc_data, test_size=0.2, random_state=42, shuffle=True)
+    # 再从剩余部分均分dev与test（各0.1/总体）
+    fc_dev, fc_test = train_test_split(fc_rest, test_size=0.5, random_state=42, shuffle=True)
 
-df1 = df[df["score"] > 8]
-print("score > 8 df1.shape", df1.shape)
+    # 保存切分结果
+    with open(os.path.join(output_root, "mcp_train_fc.json"), "w", encoding="utf-8") as f_train:
+        json.dump(fc_train, f_train, ensure_ascii=False, indent=2)
+    with open(os.path.join(output_root, "mcp_dev_fc.json"), "w", encoding="utf-8") as f_dev:
+        json.dump(fc_dev, f_dev, ensure_ascii=False, indent=2)
+    with open(os.path.join(output_root, "mcp_test_fc.json"), "w", encoding="utf-8") as f_test:
+        json.dump(fc_test, f_test, ensure_ascii=False, indent=2)
+    print(f"已切分 train:{len(fc_train)}, dev:{len(fc_dev)}, test:{len(fc_test)}")
 
-df1[["name", "arguments"]] = df1["function_call"].apply(lambda x: pd.Series(get_intent_from_function_call(x)))
-df1["language"] = df1["query"].apply(detect_language)
-df1["source"] = "mcp_intent"
 
-# 3. 应用到所有数据，输出不合格条目
-df["argument_check_error"] = df.apply(check_intent_arguments, axis=1)
-errors = df[df["argument_check_error"] != ""]
-print("存在问题的数据条数:", errors.shape[0])
-print(errors[["query", "name", "arguments", "argument_check_error"]].head(10))
+if __name__ == "__main__":
+    big_root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/function_query_1210/Function_Call_2qi_LoongMa/"
+    # 路径太长可以定义短变量名，然后用os.path.join组装，或者将根目录抽取出来重用
+    DATA_ROOT = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes"
+    FC_DIR = "function_query_1210/Function_Call_2qi_LoongMa"
+    root1 = os.path.join(DATA_ROOT, FC_DIR, "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07")
+    root2 = os.path.join(DATA_ROOT, FC_DIR, "susie_function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07")
 
-df22 = df[df["argument_check_error"] == ""]
-df22 = df22[["query", "function_call", "answer", "score", "name", "arguments", "language", "source"]]
-df22.to_excel(
-    "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/function_query_1210/origin_intent_train_data_filtered/more_than_8_data_slim_less.xlsx"
-)
+    data_process = False
+    fc_data_merge = False
+    concat_mcp_fc = False
+    convert_to_jsonl = True
+    split_fc_train_dev_test = False  # 这个之前要先转换好格式
+
+    if data_process:
+        df = process_function_call_data(root1, "function_call_loongma")
+        df2 = process_function_call_data(root2, "function_call_loongma_susie")
+
+    if fc_data_merge:
+        # 数据合并
+        df_concat = concat_df(df, df2)
+        df_concat.to_excel(os.path.join(big_root, "function_call_raw_data_1212.xlsx"))
+        # 数据分布统计
+        value_counts_by_language(df_concat, "name")
+        value_counts(df_concat, "name")
+        value_counts(df_concat, "source")
+        value_counts(df_concat, "language")
+
+    if concat_mcp_fc:
+        # 合并fc数据和原来intent_mcp数据
+        mcp_data_root = "function_query_1210/Origin_MCP_Intent_train_data_filtered"
+        fc_data_root = "function_query_1210/Function_Call_2qi_LoongMa"
+
+        mcp_intent_file = os.path.join(
+            DATA_ROOT, "function_query_1210/Origin_MCP_Intent_train_data_filtered/mcp_intent_raw_data_1212.xlsx"
+        )
+        fc_file = os.path.join(
+            DATA_ROOT, "function_query_1210/Function_Call_2qi_LoongMa/function_call_raw_data_1212.xlsx"
+        )
+
+        df_all = concat_excel_file(mcp_intent_file, fc_file)
+
+        df_all.to_excel(
+            "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1212_functino_call/mcp_fc_data_all_1212.xlsx"
+        )
+
+        value_counts_by_language(df_all, "name")
+        value_counts(df_all, "name")
+        value_counts(df_all, "source")
+        value_counts(df_all, "language")
+
+    if convert_to_jsonl:
+        # 合并后的数据 转成train.jsonl 格式
+        # 把df写到jsonl文件里
+        df = read_excel(
+            "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1212_functino_call/mcp_fc_data_all_1212.xlsx"
+        )
+        df = df.where(pd.notnull(df), None)
+
+        ## 补充上 functions字段
+        with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/apps/openai_tools.json") as f:
+            tools = json.load(f)
+        tools = json.dumps(tools)
+        # print(tools)
+        df["functions"] = tools
+
+        # 把df写到jsonl文件里
+        df = df[["query", "answer", "functions", "function_call", "name", "arguments", "score"]]
+        with open(
+            os.path.join(DATA_ROOT, "data_1212_functino_call/train.jsonl"),
+            "w",
+            encoding="utf-8",
+        ) as fout:
+            for _, row in df.iterrows():
+                # 将每一行转为dict后dump为json行
+                fout.write(json.dumps(row.to_dict(), ensure_ascii=False) + "\n")
+    if split_fc_train_dev_test:
+        critic_file = "data_1212_functino_call/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_llama_factory"
+
+        input_file = os.path.join(DATA_ROOT, critic_file, "train.jsonl")
+
+        output_root = os.path.join(DATA_ROOT, "data_1212_functino_call/train_data_fc_1212")
+        split_fc_data(input_file, output_root)

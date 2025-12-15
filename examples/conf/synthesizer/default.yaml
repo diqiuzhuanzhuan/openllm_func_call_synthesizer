@@ -90,6 +90,7 @@ critic:
 
 
 llama_factory:
+  # required fields： answer， query， functions
   enable: True
   critic_dataset: "data/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07"
   output_dir: "data"

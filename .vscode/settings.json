@@ -4,8 +4,7 @@
     "**/__pycache__": true,
     "**/__pycache__.*": true
   },
-  "python.languageServer": "Pylance",
   "python.envFile": "${workspaceFolder}/.env",
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.pythonPath": "${workspaceFolder}/.venv/bin/python"
+  "python.defaultInterpreterPath": "/data0/work/SusieSu/project/openllm_func_call_synthesizer/.venv/bin/python",
+  "python.terminal.activateEnvironment": true
 }
