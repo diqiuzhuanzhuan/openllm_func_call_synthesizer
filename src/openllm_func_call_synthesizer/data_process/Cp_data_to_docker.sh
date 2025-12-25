@@ -8,10 +8,10 @@
 # python generate_functio_call_format_data.py
 # python data_process_for_train_pipline.py
 
-cp  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_data.xlsx  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train
-cp -rf /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/
-cd  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/mcp_data_1124_for_train
-cp -f mcp_train.json mcp_dev.json ../../
+# cp  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_data.xlsx  /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/mcp_data_1124_for_train
+cp -rf /data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1212_functino_call/train_data_fc_1223  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/
+cd  /data0/work/SusieSu/project/workspace/LLaMA-Factory-main/data/mcp_train_data/train_data_fc_1223
+cp -f mcp_train_fc.json mcp_dev_fc.json ../../
 
 
 # cp -rf /data0/work/SusieSu/project/openllm_datas/processed_data/mcp_data_1117_for_train   /data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/data/mcp_train_data

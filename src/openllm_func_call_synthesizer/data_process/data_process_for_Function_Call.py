@@ -106,8 +106,8 @@ if __name__ == "__main__":
     data_process = False
     fc_data_merge = False
     concat_mcp_fc = False
-    convert_to_jsonl = False
-    split_fc_train_dev_test = True  # 这个之前要先转换好格式
+    convert_to_jsonl = True
+    split_fc_train_dev_test = False  # 这个之前要先转换好格式
 
     if data_process:
         df = process_function_call_data(root1, "function_call_loongma")
@@ -146,7 +146,6 @@ if __name__ == "__main__":
         value_counts(df_all, "source")
         value_counts(df_all, "language")
 
-    # 训练数据切分
     if convert_to_jsonl:
         # 合并后的数据 转成train.jsonl 格式
         # 把df写到jsonl文件里

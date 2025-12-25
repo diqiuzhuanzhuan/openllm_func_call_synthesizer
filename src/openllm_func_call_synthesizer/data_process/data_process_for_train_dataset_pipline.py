@@ -9,7 +9,6 @@ import sys
 
 import numpy as np
 import pandas as pd
-import ast
 
 sys.path.append("/data0/work/SusieSu/project")
 sys.path.append("/data0/work/SusieSu/project/openllm_func_call_synthesizer/src/openllm_func_call_synthesizer/utils")
@@ -106,28 +105,21 @@ def pre_process(df):
     return df
 
 
-def concat_prompt(df):
+def concat_prompt(df, system_prompt_file, input_field, output_field):
     with open(
-        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp.txt",
+        system_prompt_file,
         encoding="utf-8",
     ) as f1:
-        system_prompt_mcp = f1.read()
-    with open(
-        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_uliya.txt",
-        encoding="utf-8",
-    ) as f2:
-        system_prompt_uliya = f2.read()
+        system_prompt = f1.read()
 
     lora_input_list = []
     for _, df_0 in df.iterrows():
         df_ = df_0.to_dict()
-        intent_ = df_.get("intent", "")
-        system_prompt = system_prompt_mcp if intent_ in MCP_INTENT_LIST else system_prompt_uliya
         lora_input_list.append(
             {
                 "instruction": system_prompt,
-                "input": df_.get("input", ""),
-                "output": df_.get("output", ""),  # json.dumps(df_.get('output', ""), ensure_ascii=False)
+                "input": df_.get(input_field, ""),
+                "output": df_.get(output_field, ""),  # json.dumps(df_.get('output', ""), ensure_ascii=False)
             }
         )
     df["lora_input"] = lora_input_list
@@ -178,7 +170,7 @@ def train_dev_test_split_from_jsonfile(jsonl_file, root, train_ratio=0.8, dev_ra
     import random
 
     # 1. 读取所有数据
-    with open(jsonl_file, "r", encoding="utf-8") as fin:
+    with open(jsonl_file, encoding="utf-8") as fin:
         all_lines = [line.strip() for line in fin if line.strip()]
     print(f"Total samples: {len(all_lines)}")
 
@@ -189,20 +181,19 @@ def train_dev_test_split_from_jsonfile(jsonl_file, root, train_ratio=0.8, dev_ra
     n = len(all_lines)
     n_train = int(n * train_ratio)
     n_dev = int(n * dev_ratio)
-    n_test = n - n_train - n_dev
 
     train_lines = all_lines[:n_train]
-    dev_lines = all_lines[n_train:n_train+n_dev]
-    test_lines = all_lines[n_train+n_dev:]
+    dev_lines = all_lines[n_train : n_train + n_dev]
+    test_lines = all_lines[n_train + n_dev :]
 
     print(f"Train: {len(train_lines)}, Dev: {len(dev_lines)}, Test: {len(test_lines)}")
 
     # 3. 保存分割后的数据 (保存为json格式, 每个文件为一个完整的json array)
     os.makedirs(root, exist_ok=True)
     # 将每行解析为json对象
-    train_objs = [json.loads(l) for l in train_lines]
-    dev_objs = [json.loads(l) for l in dev_lines]
-    test_objs = [json.loads(l) for l in test_lines]
+    train_objs = [json.loads(aa) for aa in train_lines]
+    dev_objs = [json.loads(mm) for mm in dev_lines]
+    test_objs = [json.loads(kk) for kk in test_lines]
     # 保存为 .json
     with open(os.path.join(root, "mcp_train.json"), "w", encoding="utf-8") as fout:
         json.dump(train_objs, fout, ensure_ascii=False, indent=2)
@@ -218,6 +209,10 @@ if __name__ == "__main__":
     root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124"
     for_train_root = os.path.join(root, "mcp_data_1124_for_train/")
     jsonl_file = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1124/raw_train_1124.jsonl"
+    system_prompt_file = (
+        "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/system_prompt_mcp.txt"
+    )
+    input_field, output_field = "input", "output"  # 输入文件的 输入和输出字段名
 
     if not os.path.exists(for_train_root):
         os.makedirs(for_train_root)
@@ -244,14 +239,11 @@ if __name__ == "__main__":
 
     # 3. 拼接prompt， 不同的intent  拼不同prompt
     if steps_control["concat_prompt"]:
-        df = concat_prompt(df)
+        df = concat_prompt(df, system_prompt_file, input_field, output_field)
         df.to_excel(output_file)
 
     # 4. 拆分 train  dev test，  保存好 xlsx和 json。
     if steps_control["train_dev_test_split"]:
         # df["lora_input"] = df["lora_input"].apply(ast.literal_eval)
-        # train_dev_test_split(df, for_train_root)
-        train_dev_test_split_from_jsonfile(jsonl_file, for_train_root)
-
-    
-
+        train_dev_test_split(df, for_train_root)  # 从xlsx文件拆分
+        # train_dev_test_split_from_jsonfile(jsonl_file, for_train_root)  # 从jsonl文件拆分
