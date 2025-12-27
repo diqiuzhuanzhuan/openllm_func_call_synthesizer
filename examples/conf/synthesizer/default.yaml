@@ -44,6 +44,16 @@ query_generation:
     #     max_tokens_per_minute: 1_000_000
     #     require_all_responses: False
 
+    # ollama:
+    #   backend: "litellm"
+    #   models:
+    #     - "ollama_chat/qwen3-1.7b"
+    #   backend_params:
+    #     max_tokens_per_minute: 1_000_000
+    #     require_all_responses: False
+
+    #
+
     google:
       backend: "openai"
       models:
