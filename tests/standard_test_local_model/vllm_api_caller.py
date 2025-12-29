@@ -4,7 +4,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,6,7"
 import json
 import re
 
-import pandas as pd
 from openai import OpenAI
 
 system_prompt = (
@@ -13,11 +12,12 @@ system_prompt = (
     "You need to determine if the function call is correct for the query."
 )
 
-with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/apps/openai_tools_1210.json") as f:
+with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/openai_tools.json") as f:
     openai_format_tools = json.load(f)
 
-client = OpenAI(base_url="http://192.168.111.3:8010/v1", api_key="dummy")
-model_name = "qwen3_1.7b_mix"
+client = OpenAI(base_url="http://192.168.111.3:8019/v1", api_key="dummy")
+# model_name = "qwen3_1.7b_1215_function_call"
+model_name = "qwen3_1.7b_1215_function_call"
 
 
 def filter_think(text):
@@ -41,11 +41,13 @@ def get_one_vllm_response(system_prompt, text):
         tools=openai_format_tools,  # 这里应是 openai_format_tools["tools"]，不是 openai_format_tools
         tool_choice="auto",  # auto => 模型可能决定用工具或不使用
         stream=False,
-        # n=5,
-        # temperature=2
+        temperature=0.01,
     )
 
     res_list = []
+    print(
+        "==========================response.choices[0].message==========================\n", response.choices[0].message
+    )
     for choice in response.choices:
         rs = {
             "role": choice.message.role,
@@ -88,7 +90,7 @@ def get_vllm_response(x, system_prompt):
         return parsed_rs_list[0]
     except Exception as e:
         print(e)
-        return None
+        return {"unknown": {}}
 
 
 if __name__ == "__main__":
@@ -105,14 +107,18 @@ if __name__ == "__main__":
     # rs1 = parse_fuction_call_response(rs)
     # print('-------------------------\n',rs1,type(rs1))
 
-    df = pd.read_excel("/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208/test_all.xlsx")
-    print("df.shape, df.columns", df.shape, df.columns)
+    # df = pd.read_excel("/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208/test_all.xlsx")
+    # print("df.shape, df.columns", df.shape, df.columns)
 
     # 调用示例
     input = "我想做一个家庭聚会的照片集。"
-    rs_list = get_one_vllm_response(system_prompt, input)
-    print("-------------\n", rs_list)
+    vllm_result = get_one_vllm_response(system_prompt, input)
 
-    parsed_rs_list = parse_vllm_multi_response(rs_list)
-    print("------parsed_rs_list------\n")
-    print(parsed_rs_list)
+    # rs = get_vllm_response(input, system_prompt)
+    print("================vllm_result================\n", vllm_result)
+
+    # print("-------------\n", rs_list)
+
+    # parsed_rs_list = parse_vllm_multi_response(rs_list)
+    # print("------parsed_rs_list------\n")
+    # print(parsed_rs_list)

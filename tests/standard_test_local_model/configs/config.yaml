@@ -18,13 +18,15 @@
 # 选择使用本地模型还是API模式
 # false 或不设置 = 本地模型模式（需要GPU）
 # true = API模式（通过HTTP API调用远程模型）
-use_api: false
-model_type:  vllm_api # "local" or "ollama_api" or "vllm_api"
+use_api: true
+model_type:  ollama_api_no_tool # ollama_api_function_call # vllm_api # "local" or "ollama_api" or "vllm_api"
 
+tool_path: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/openai_tools.json"
+system_prompt: "You are a helpful assistant. "
 # ========== 本地模型配置 ==========
 # 仅在 use_api: false 时需要配置
-cuda_device: "1,6,7"
-num_processes: 2
+cuda_device: "0,1,4,5,7"
+num_processes: 4
 
 # 本地模型路径
 # model_file_path: "/data0/work/SusieSu/project/workspace/llama/LLaMA-Factory/saves/qwen3_1.7b_1030_intent_mcp/sft/checkpoint-240"
@@ -32,18 +34,19 @@ model_file_path: "/data0/work/SusieSu/project/workspace/LLaMA-Factory-main/saves
 
 # ========== API模式配置 ==========
 # 仅在 use_api: true 时需要配置  API服务地址 (支持Ollama格式的API)
-api_url: "http://192.168.111.3:11434/api/chat"
-
+# api_url: "http://192.168.111.3:8019/api/chat"
+# api_url: "http://localhost:11434"
+api_url: "http://localhost:11434/v1/chat/completions"
 # API模型名称 (与本地模型路径不同，这里是API服务中的模型名)
-model_name: "mcp_intent_1016:q4_k_m"
+model_name: "function_call_1216_no_tool"  #"function_call_1216-q4_K_M"
 # model_name: "mcp_intent_1016:f16"
 
 # API调用参数（可选，默认值如下）
 temperature: 0.01
 
 # 通过指定 root 目录来简化路径
-root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208"
-output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/DPO_data/1208_v2"
+root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1226"
+output_root: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1226"
 
 # 选择使用哪个系统提示词（仅用于向后兼容）
 prompt_key: "mcp"  # uliya or mcp
@@ -78,10 +81,10 @@ mcp_intent_list:
 -  "configure_device_buzzer_alerts"
 -  "control_cooling_fan_speed"
 -  "docker_search_image"
-
+-  ""
 # ========== 输入输出文件配置 ==========
 # 支持 ${root} 变量，代码要先解析
-input_file: "${root}/test_all.xlsx"
+input_file: "${root}/mcp_test_fc.xlsx"
 output_file: "${output_root}/test_all_llm_response.xlsx"
 
 # 数据后处理输入输出
@@ -101,8 +104,8 @@ confusion_matrix_file: "${output_root}/test_all_evaluate_hybrid_confusion_matrix
 # ========== 步骤执行控制 ==========
 # 控制执行哪些步骤 (true/false)
 steps:
-  inference: true               # 是否执行LLM推理
-  postprocess: true             # 是否执行数据后处理（LLM+GT标准字段合成一步）
+  inference: false               # 是否执行LLM推理
+  postprocess: false             # 是否执行数据后处理（LLM+GT标准字段合成一步）
   evaluate: true                  # 是否执行评测
   evaluate_output_str: false
 
@@ -114,10 +117,10 @@ evaluate_separate: false  # 设为 true 则分开评测
 
 # ========== 数据字段配置 ==========
 # 输入数据中包含用户查询的字段名
-input_field: "input"
+input_field: "query"
 
 # Ground Truth相关字段名
-ground_truth: "output"    # 数据中 ground truth 列名
+ground_truth: "function"    # 数据中 ground truth 列名
 ground_truth_intent: "gt_intent"    # 数据中 ground truth intent 列名， 这个如果没有 会从ground_truth来提取intent
 ground_truth_slot: "gt_slots"    # 数据中 ground truth slot 列名， 这个如果没有 会从ground_truth来提取slots
 
@@ -130,8 +133,8 @@ llm_slot: "llm_slots"    # 数据中 llm slot 列名， 这个如果没有 会�
 # json_prompt_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/prompt_dict.json"  # JSON文件路径
 
 ## 方式2: 从txt 读取prompt
-system_prompt_mcp_file:  "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/tmp.json"
-system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/tmp.json"
+system_prompt_mcp_file:  "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prompt.txt"
+system_prompt_uliya_file: "/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/prompt_dict/function_call_prompt.txt"
 
 # # ========== 评测配置 ==========
 # # 是否进行评测 (已被steps.evaluate替代，保留兼容性)

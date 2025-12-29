@@ -1,1 +1,1 @@
-nohup python -u test_one_v2.py > 1209_test_one_v2.log 2>&1 &
+nohup python -u main.py > 1224_test_main.log 2>&1 &

@@ -11,6 +11,8 @@ import time
 
 import pandas as pd
 import requests
+from ollama import Client
+from pandarallel import pandarallel
 from parse_response_to_json import parse_react_to_json
 
 
@@ -116,6 +118,206 @@ def preprocess_data(df, config):
     return df
 
 
+def get_ollama_response_chat(system_prompt, text, url, model_name, tool_path, OPENAI_TOOLS_DATA):
+    client = Client(host=url)
+
+    model_name = model_name
+
+    response = client.chat(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text},
+        ],
+        options={"temperature": 0.01},
+        tools=OPENAI_TOOLS_DATA,
+        # format=''
+    )
+    # # ✅ Ollama 正确取法
+    msg = response["message"]
+
+    # print('----------response["message"]-----------', msg)
+    # 单独写一个函数来解析 tool_calls
+    def parse_tool_calls(tool_calls):
+        parsed_tools = []
+        if tool_calls:
+            for call in tool_calls:
+                # 尝试当作对象解析
+                function = getattr(call, "function", None)
+                if function:
+                    parsed_func = {
+                        "name": getattr(function, "name", None),
+                        "arguments": getattr(function, "arguments", None),
+                    }
+                    parsed_tools.append(parsed_func)
+                # 尝试当作 dict 解析（兼容性考虑）
+                elif isinstance(call, dict) and "function" in call:
+                    parsed_tools.append(
+                        {
+                            "name": call["function"].get("name"),
+                            "arguments": call["function"].get("arguments"),
+                        }
+                    )
+        return parsed_tools if parsed_tools else []
+
+    result = {
+        # "role": msg["role"],
+        "content": filter_think(msg.get("content")),
+        "tool_calls": parse_tool_calls(msg.get("tool_calls")),
+    }
+    print("===============result===============\n", result)
+    if result["tool_calls"] and isinstance(result["tool_calls"], list) and len(result["tool_calls"]) > 0:
+        return result["tool_calls"]
+    else:
+        return result["content"]
+
+
+def extract_tool_call(content):
+    # 使用正则表达式提取 <tool_call>...</tool_call> 之间的内容
+    match = re.search(r"<tool_call>(.*?)</tool_call>", content, re.DOTALL)
+    if not match:
+        return None
+    raw_json = match.group(1).strip()
+    try:
+        # 解析json字符串
+        return json.loads(raw_json)
+    except Exception as e:
+        print("解析tool_call内容为JSON失败:", e)
+        return None
+
+
+def get_llm_response(input_text, system_prompt, api_url, model_name, OPENAI_TOOLS_DATA):
+    # 尝试加载为 Python list（如果原数据是字符串形式的 JSON list）
+    if isinstance(OPENAI_TOOLS_DATA, str):
+        tools = json.loads(OPENAI_TOOLS_DATA)
+    else:
+        tools = OPENAI_TOOLS_DATA
+
+    payload = {
+        "model": model_name,
+        "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": input_text}],
+        "temperature": 0.2,
+        # "presence_penalty": 2,
+        # "repetition_penalty": 2,
+        # "top_p": 0.9,
+        "stream": False,
+        "tools": tools,  # OPENAI_TOOLS_DATA
+    }
+
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(api_url, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise RuntimeError(response.text)
+
+    resp = response.json()
+    print("-------------resp--------------------\n", resp)
+    message = resp["choices"][0]["message"]
+    print("-----------------message--------------------\n", message)
+    content = filter_think(message.get("content", ""))
+
+    # 尝试解析 JSON，如果模型输出了 function call
+    try:
+        tool_call = json.loads(content)
+    except Exception:
+        tool_call = None
+
+    return content, tool_call
+
+
+def get_one_response(input_text, system_prompt, api_url, model_name, OPENAI_TOOLS_DATA):
+    content, tool_call = get_llm_response(input_text, system_prompt, api_url, model_name, OPENAI_TOOLS_DATA)
+    tool_call = extract_tool_call(content)
+    print("模型原始输出：")
+    print("content:", content)
+    print("\n解析后的 JSON：")
+    print("tool_call:", tool_call)
+
+    if tool_call:
+        return tool_call
+    else:
+        return content
+
+
+def get_ollama_response_no_tool(config):
+    with open(config.get("tool_path")) as f:
+        OPENAI_TOOLS_DATA = json.load(f)
+
+    # 读取数据并预处理
+    df = pd.read_excel(config["input_file"])
+    # df = df.iloc[0:10]
+    df = preprocess_data(df, config)
+
+    # 定义API调用函数
+    api_url = config.get("api_url", "http://192.168.111.3:11434/api/chat")
+    model_name = config.get("model_name")
+
+    df["llm_response"] = df[config.get("input_field")].apply(
+        lambda x: get_one_response(x, config.get("system_prompt"), api_url, model_name, OPENAI_TOOLS_DATA)
+    )
+
+    # 保存结果
+    df.to_excel(config["output_file"], index=False)
+    print("API LLM inference done, result saved:", config["output_file"])
+    print("------end time (API)------", time.strftime("%Y-%m-%d %H:%M:%S"))
+    return df
+
+
+def batch_ollama_api_function_call(config):
+    """
+    使用config.yaml批量调用LLM进行预测
+    Args:
+        config: 配置字典，需要包含以下字段:
+            - api_url: API地址
+            - model_name: 模型名称
+            - input_file: 输入Excel文件路径
+            - output_file: 输出Excel文件路径
+            - system_prompt_mcp: MCP系统提示词
+            - system_prompt_uliya: Uliya系统提示词
+            - input_field: 输入字段名
+            - ground_truth: Ground Truth字段名
+            - mode: 模式选择 ('hybrid' 或 'split')
+            - mcp_intent_list: MCP intent列表 (split模式需要)
+            - uliya_intent_list: Uliya intent列表 (split模式需要)
+    Returns:
+        DataFrame
+    """
+    print("------begin time (API)------", time.strftime("%Y-%m-%d %H:%M:%S"))
+
+    with open(config.get("tool_path")) as f:
+        OPENAI_TOOLS_DATA = json.load(f)
+
+    # 读取数据并预处理
+    df = pd.read_excel(config["input_file"])
+    # df = df.iloc[0:10]
+    df = preprocess_data(df, config)
+
+    # 获取模式配置
+    mode = config.get("mode", "hybrid")
+    print(f"Running in {mode} mode")
+
+    system_prompt_fc = (
+        "You are a helpful assistant. "
+        "If a function is required, respond ONLY with tool_calls. "
+        "Do not output any other text."
+    )
+
+    # 定义API调用函数
+    api_url = config.get("api_url", "http://192.168.111.3:11434/api/chat")
+    model_name = config.get("model_name")
+
+    tool_path = config.get("tool_path")
+
+    df["llm_response"] = df[config.get("input_field")].apply(
+        lambda x: get_ollama_response_chat(system_prompt_fc, x, api_url, model_name, tool_path, OPENAI_TOOLS_DATA)
+    )
+
+    # 保存结果
+    df.to_excel(config["output_file"], index=False)
+    print("API LLM inference done, result saved:", config["output_file"])
+    print("------end time (API)------", time.strftime("%Y-%m-%d %H:%M:%S"))
+    return df
+
+
 def batch_llm_predict_api(config):
     """
     使用config.yaml批量调用LLM进行预测
@@ -147,7 +349,6 @@ def batch_llm_predict_api(config):
     print(f"Running in {mode} mode")
 
     # 初始化 pandarallel
-    from pandarallel import pandarallel
 
     pandarallel.initialize()
 

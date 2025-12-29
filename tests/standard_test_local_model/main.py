@@ -6,7 +6,7 @@ import time
 import pandas as pd
 import yaml
 from calculate_confusion_matrix import get_confusion_matrix
-from llm_api_caller import batch_llm_predict_api
+from llm_api_caller import batch_llm_predict_api, batch_ollama_api_function_call, get_ollama_response_no_tool
 
 # 导入本地模型和API调用模块
 from llm_local_caller import batch_llm_predict_threaded
@@ -124,62 +124,63 @@ def load_config(config_file):
 
 
 # 评测相关代码
-def evaluate_arguments(ground_truth, model_response):
+def evaluate_arguments(ground_truth, model_response, function_same):
     """
     评测函数参数的准确性
     Returns:
-        str: 评测结果 ('exact_match', 'has_extra_fields', 'partial_match', 'no_match', 'subset')
+        str: 评测结果 ('exact_match', 'has_extra_fields', 'partial_match', 'no_match')
+            - exact_match: 完全一致
+            - has_extra_fields: model_response 比 ground_truth 多字段，但 ground_truth 内容完全包含在 model_response 中
+            - partial_match: model_response 覆盖了 ground_truth 的部分字段
+            - no_match: 没有关联
     """
-    if not isinstance(ground_truth, dict) or not isinstance(model_response, dict):
+
+    # 若函数名不同则直接 no_match
+    if not function_same:
         return "no_match"
-    if ground_truth == {} and model_response == {}:
+
+    # 处理空/空字典
+    if (ground_truth == "" or ground_truth == {}) and (model_response == "" or model_response == {}):
         return "exact_match"
-    if not ground_truth or not model_response:
-        return "no_match"
+
     # 1. 完全一致
     if ground_truth == model_response:
         return "exact_match"
 
-    # 2. 检查是否有多余字段
-    gt_keys = set(ground_truth.keys())
-    mr_keys = set(model_response.keys())
-    has_extra_fields = len(mr_keys - gt_keys) > 0
-    if has_extra_fields:
-        return "has_extra_fields"
+    # 2. 判断类型和取键集合
+    gt_keys = set(ground_truth.keys()) if isinstance(ground_truth, dict) else set()
+    mr_keys = set(model_response.keys()) if isinstance(model_response, dict) else set()
 
-    ##新增子集关系
-    # 3. 子集关系
-    def is_subset(a, b):
-        """判断 a 是否为 b 的子集（递归支持 dict、str）"""
-        if isinstance(a, dict) and isinstance(b, dict):
-            for k, v in a.items():
-                if k not in b:
-                    return False
-                if not is_subset(v, b[k]):
-                    return False
-            return True
-        elif isinstance(a, str) and isinstance(b, str):
-            # 忽略括号、空格、引号差异后再判断
-            def normalize(s):
-                for ch in ["「", "」", "（", "）", "(", ")", '"', "'", " "]:
-                    s = s.replace(ch, "")
-                return s
+    # 3. has_extra_fields: model_response 字段比 ground_truth 多
+    #  且 ground_truth 所有键值都在 model_response 里，且对应内容也一样）
+    if isinstance(ground_truth, dict) and isinstance(model_response, dict):
+        if gt_keys and mr_keys and gt_keys.issubset(mr_keys):
+            # 检查所有 ground_truth 字段值都精确匹配
+            all_match = all(ground_truth[k] == model_response[k] for k in gt_keys)
+            if all_match and mr_keys > gt_keys:
+                return "has_extra_fields"
 
-            a_norm, b_norm = normalize(a), normalize(b)
-            return a_norm in b_norm or b_norm in a_norm
-        else:
-            return a == b
-
-    if is_subset(ground_truth, model_response) or is_subset(model_response, ground_truth):
-        return "subset"
-
-    # 4. 部分匹配
-    common_keys = gt_keys & mr_keys
-    if common_keys:
-        for key in common_keys:
-            if ground_truth[key] == model_response[key]:
+    # 4. partial_match: 只命中部分字段（即存在有交集字段，且这些字段至少有一个内容匹配，且不全覆盖）
+    if isinstance(ground_truth, dict) and isinstance(model_response, dict):
+        common_keys = gt_keys & mr_keys
+        if common_keys:
+            match_count = sum(ground_truth[k] == model_response[k] for k in common_keys)
+            if match_count > 0:
                 return "partial_match"
+        return "no_match"
+
+    # 5. 其它类型，例如非 dict 时，降级比较
+    if ground_truth == model_response:
+        return "exact_match"
     return "no_match"
+
+
+def safe_eval(x):
+    try:
+        return ast.literal_eval(x)
+    except Exception as e:
+        print(f"[safe_eval] 解析失败: {x}, error: {e}")
+        return ""
 
 
 def evaluate_single_dataset(data, config, dataset_name="All"):
@@ -203,7 +204,7 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
     llm_slot = config["llm_slot"]
 
     # 保证字段转dict
-    data[ground_truth_slot] = data[ground_truth_slot].apply(lambda x: eval(x) if isinstance(x, str) else x)
+    data[ground_truth_slot] = data[ground_truth_slot].apply(lambda x: safe_eval(x))
     import ast
 
     def safe_eval_slot(x):
@@ -242,6 +243,18 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
         }
         summary_info.append(summary)
 
+    rprint("\n[bold underline magenta]argument评测定义说明：[/bold underline magenta]")
+    rprint("[bold green]- exact_match[/bold green]: [yellow]完全一致[/yellow]")
+    rprint(
+        "[bold cyan]- has_extra_fields[/bold cyan]: [yellow]model_response 比 ground_truth 多字段，\
+        但 ground_truth 内容完全包含在 model_response 中[/yellow]"
+    )
+    rprint(
+        "[bold blue]- partial_match[/bold blue]: [yellow]model_response 覆盖了 ground_truth \
+        的部分字段[/yellow]"
+    )
+    rprint("[bold red]- no_match[/bold red]: [yellow]没有关联[/yellow]\n")
+
     # 漂亮打印
     rprint(f"[bold cyan]=== 【{dataset_name}】评测结果简表 ===[/bold cyan]")
     for info in summary_info:
@@ -261,7 +274,7 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
 
     # 参数细粒度评测
     data["argument_evaluation_result"] = data.apply(
-        lambda x: evaluate_arguments(x[ground_truth_slot], x[llm_slot]), axis=1
+        lambda x: evaluate_arguments(x[ground_truth_slot], x[llm_slot], x["function_same"]), axis=1
     )
     # 查看评测结果分布
     rprint(f"[bold cyan]=== 【{dataset_name}】argument评测结果分布 ===[/bold cyan]")
@@ -272,10 +285,8 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
     total = len(data)
     exact_match_count = (data["argument_evaluation_result"] == "exact_match").sum()
     partial_match_count = (data["argument_evaluation_result"] == "partial_match").sum()
-    subset_match_count = (data["argument_evaluation_result"] == "subset").sum()
 
     exact_plus_partial = exact_match_count + partial_match_count
-    combined_count = exact_match_count + partial_match_count + subset_match_count
 
     accuracy = exact_plus_partial / total if total > 0 else 0
 
@@ -284,7 +295,6 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
     rprint(f"[bold yellow]数据总数 total[/bold yellow] = [bold magenta]{total}[/bold magenta]")
     rprint(f"[bold yellow]完全一致 exact_match 数量[/bold yellow] = [bold green]{exact_match_count}[/bold green]")
     rprint(f"[bold yellow]部分匹配 partial_match 数量[/bold yellow] = [bold blue]{partial_match_count}[/bold blue]")
-    rprint(f"[bold yellow]子集关系 subset 数量[/bold yellow] = [bold cyan]{subset_match_count}[/bold cyan]")
 
     rprint_msg1 = (
         "[bold]([green]exact_match[/green] + [blue]partial_match[/blue]) / total = "
@@ -293,18 +303,21 @@ def evaluate_single_dataset(data, config, dataset_name="All"):
     )
     rprint(rprint_msg1)
 
-    combined_accuracy = combined_count / total if total > 0 else 0
+    # 新的 (exact_match + has_extra_fields) / total 计算
+    has_extra_fields_count = (data["argument_evaluation_result"] == "has_extra_fields").sum()
+    exact_and_extra_count = exact_match_count + has_extra_fields_count
+    exact_and_extra_accuracy = exact_and_extra_count / total if total > 0 else 0
 
     rprint_msg2 = (
-        "[bold]([green]exact_match[/green] + [blue]partial_match[/blue] + [cyan]subset[/cyan]) / total = "
-        f"[green]{combined_count}[/green] / [magenta]{total}[/magenta] = "
-        f"[bold red]{combined_accuracy:.4%}[/bold red][/bold]"
+        "[bold]([green]exact_match[/green] + [cyan]has_extra_fields[/cyan]) / total = "
+        f"[green]{exact_match_count}[/green] + [cyan]{has_extra_fields_count}[/cyan] / [magenta]{total}[/magenta] = "
+        f"[bold red]{exact_and_extra_accuracy:.4%}[/bold red][/bold]"
     )
     rprint(rprint_msg2)
 
     # 每种情况分别展示两条例子
     print(f"\n【{dataset_name}】各评测结果类型示例:")
-    eval_types = ["exact_match", "partial_match", "subset", "has_extra_fields", "no_match"]
+    eval_types = ["exact_match", "partial_match", "has_extra_fields", "no_match"]
     for eval_type in eval_types:
         subset = data[data["argument_evaluation_result"] == eval_type]
         if len(subset) == 0:
@@ -325,7 +338,7 @@ def evaluate_module(config, data=None):
     主评测函数：根据配置决定是合并评测还是分开评测
     """
     if data is None:
-        data = pd.read_excel(config["evaluate_input_file"])
+        data = pd.read_excel(config["evaluate_input_file"]).fillna("")
 
     # 获取评测模式配置
     evaluate_separate = config.get("evaluate_separate", False)
@@ -399,7 +412,7 @@ def evaluate_output_str_module(config, data=None):
     若未传入 data，则从 evaluate_input_file 读取。
     """
     if data is None:
-        data = pd.read_excel(config["evaluate_input_file"])
+        data = pd.read_excel(config["evaluate_input_file"]).fillna("")
 
     eval_cfg = config.get("evaluate_output_str", {})
     gt_col = eval_cfg.get("ground_truth_col") or eval_cfg.get("ground_truth")
@@ -490,7 +503,7 @@ def robust_parse_v2(x):
                         x_json_like = x.replace("'", '"')
                         parsed_result = json.loads(x_json_like)
                 except Exception:
-                    print(f"所有方式均失败: {x}")
+                    # print(f"所有方式均失败: {x}")
                     return x  # 保留原始结果
 
     # --- 统一处理结果 ---
@@ -514,6 +527,29 @@ def robust_parse_v2(x):
     return x
 
 
+def check_gt_slot_empty(df, gt_col, gt_intent_col, gt_slot_col):
+    df = df.reset_index(drop=True)
+    # gt_col = 'function'
+    # gt_intent_col = 'gt_intent'
+    # gt_slot_col = 'gt_slots'
+
+    dd = df[(df["gt_intent"] != "") & (df["gt_slots"] == "")].copy()
+    print("处理前 空slot", dd.shape)
+    dd[gt_col] = dd[gt_col].apply(robust_parse_v2)
+
+    dd[gt_slot_col] = dd[gt_col].apply(
+        lambda x: x.get("slots", "")
+        if isinstance(x, dict) and "slots" in x.keys()
+        else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys() else "")
+    )
+
+    df.loc[dd.index, gt_slot_col] = dd[gt_slot_col]
+    print("处理后空slot数量:", (df[gt_slot_col] == "").sum())
+    print("处理后空intent数量:", (df[gt_intent_col] == "").sum())
+
+    return df
+
+
 def postprocess_data(config):
     """
     数据后处理：提取LLM响应和Ground Truth到标准字段名
@@ -522,7 +558,7 @@ def postprocess_data(config):
     input_file = config["postprocess_input_file"]
     output_file = config["postprocess_output_file"]
 
-    df = pd.read_excel(input_file)
+    df = pd.read_excel(input_file).fillna("")
 
     # 处理LLM输出列
     llm_response_col = "llm_response"
@@ -565,13 +601,17 @@ def postprocess_data(config):
         if isinstance(x, dict) and "slots" in x.keys()
         else (x.get("arguments", "") if isinstance(x, dict) and "arguments" in x.keys() else "")
     )
+    tmp = df[df[gt_slot_col] == ""]
+    print(f"gt_slot_col为空的数据条数: {tmp.shape[0]}")
 
-    # if config["model_type"] == "uliya_intent":
-    #     df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("intent", "") if isinstance(x, dict) else "")
-    #     df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("slots", {}) if isinstance(x, dict) else {})
-    # else:
-    #     df[gt_intent_col] = df[gt_col].apply(lambda x: x.get("name", "") if isinstance(x, dict) else "")
-    #     df[gt_slot_col] = df[gt_col].apply(lambda x: x.get("arguments", {}) if isinstance(x, dict) else {})
+    tmp1 = df[df[gt_intent_col] == ""]
+    print(f"gt_intent_col为空的数据条数: {tmp1.shape[0]}")
+
+    # 如果存在槽位为空情况， 特殊处理
+    dd = df[(df[gt_intent_col] != "") & (df[gt_slot_col] == "")].copy()
+    print("处理前 空slot", dd.shape)
+    if dd.shape[0] > 0:
+        df = check_gt_slot_empty(df, gt_col, gt_intent_col, gt_slot_col)
 
     df.to_excel(output_file, index=False)
     print(f"postprocess_data save to: {output_file}")
@@ -602,8 +642,15 @@ if __name__ == "__main__":
             print("使用API模式进行推理")
             df = batch_llm_predict_api(config)
 
+        elif model_type == "ollama_api_no_tool":
+            df = get_ollama_response_no_tool(config)
+
+        elif model_type == "ollama_api_function_call":
+            print("使用client 方式 调用ollama API模式进行推理")
+            df = batch_ollama_api_function_call(config)
+
         elif model_type == "vllm_api":
-            df = pd.read_excel(config.get("input_file", ""))
+            df = pd.read_excel(config.get("input_file", "")).fillna("")
             # df = df.iloc[0:5]
             print(f"df.shape: {df.shape}", df.columns)
             print("使用vLLM API模式进行推理")
@@ -611,12 +658,12 @@ if __name__ == "__main__":
             print(f"input_field: {input_field}")
             df["llm_response"] = df[input_field].apply(lambda x: get_vllm_response(x, FUNCTION_CALL_SYSTEM_PROMPT))
 
-            df.to_excel(config.get("output_file", ""))
-
         else:
             print("使用本地模型进行推理")
             # df = batch_llm_predict(config)
             df = batch_llm_predict_threaded(config)
+
+        df.to_excel(config.get("output_file", ""))
         print("------end inference------", time.strftime("%Y-%m-%d %H:%M:%S"))
 
     # 步骤2: 数据后处理
