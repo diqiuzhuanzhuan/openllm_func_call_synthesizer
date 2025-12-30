@@ -290,6 +290,34 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
         openai_format_dataset["test"].to_csv(str(output_dir / "test.csv"))
         openai_format_dataset["test"].to_parquet(str(output_dir / "test.parquet"))
 
+def create_verl_compatible_dataset(cfg: DictConfig):
+    verl_cfg = cfg.synthesizer.verl
+    critic_dataset_path = Path(verl_cfg.critic_dataset)
+    if not critic_dataset_path.exists():
+        raise FileNotFoundError(f"File {critic_dataset_path} not found")
+    dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
+    if verl_cfg.score_field in dataset["train"].column_names:
+        dataset = dataset.filter(lambda x: x[verl_cfg.score_field] < verl_cfg.score_threshold)
+
+    openai_format_dataset = dataset.map(
+        format_openai,
+        fn_kwargs={"system_prompt": verl_cfg.system_prompt},
+    ).remove_columns(dataset["train"].column_names)
+    output_dir = Path(verl_cfg.output_dir) / verl_cfg.name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if verl_cfg.split_ratio > 0 and verl_cfg.split_ratio < 1:
+        openai_format_dataset = openai_format_dataset["train"].train_test_split(
+            test_size=1 - verl_cfg.split_ratio
+        )
+
+    openai_format_dataset["train"].to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
+    openai_format_dataset["train"].to_csv(str(output_dir / "train.csv"))
+    openai_format_dataset["train"].to_parquet(str(output_dir / "train.parquet"))
+    if "test" in openai_format_dataset:
+        openai_format_dataset["test"].to_json(str(output_dir / "test.jsonl"), orient="records", lines=True)
+        openai_format_dataset["test"].to_csv(str(output_dir / "test.csv"))
+        openai_format_dataset["test"].to_parquet(str(output_dir / "test.parquet"))    
+
 
 @hydra.main(config_path="../examples/conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
@@ -313,6 +341,8 @@ def main(cfg: DictConfig):
         critic_function_call_dataset(cfg)
     if cfg.synthesizer.llama_factory.enable:
         create_llama_factory_compatible_dataset(cfg)
+    if cfg.synthesizer.verl.enable:
+        create_verl_compatible_dataset(cfg)
 
 
 if __name__ == "__main__":

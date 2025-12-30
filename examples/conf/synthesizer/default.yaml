@@ -110,3 +110,15 @@ llama_factory:
   score_field: "score"
   score_threshold: 8
   system_prompt: "You are a helpful assistant."
+
+
+verl:
+  enable: True
+  critic_dataset: "data/function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07"
+  output_dir: "data"
+  output_format: "jsonl"
+  name: "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07_verl"
+  split_ratio: 0.85
+  score_field: "score"
+  score_threshold: 8
+  system_prompt: "You are a helpful assistant."
