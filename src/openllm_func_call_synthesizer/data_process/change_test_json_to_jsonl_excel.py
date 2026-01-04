@@ -90,6 +90,19 @@ def change_json_to_excel(json_file_path, output_excel_path):
     df.to_excel(output_excel_path, index=False)
     print(f"写入完毕，输出到 {output_excel_path}")
 
+def change_excel_to_jsonl(excel_file_path, output_jsonl_path):
+    # 读取excel文件
+    df = pd.read_excel(excel_file_path)
+    df = df[df['source'] == 'XufeiChen']
+    print('----------df.shape---------', df.shape)
+    with open(output_jsonl_path, "w", encoding="utf-8") as fout:
+        for user_content in df["input"]:
+            # 跳过空值
+            if pd.isna(user_content):
+                continue
+            line = json.dumps({"query": user_content}, ensure_ascii=False)
+            fout.write(line + "\n")
+    print(f"jsonl已写入 {output_jsonl_path}")
 
 if __name__ == "__main__":
     root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1212_functino_call/train_data_fc_1222/"
