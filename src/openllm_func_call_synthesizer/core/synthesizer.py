@@ -47,12 +47,20 @@ class FunctionCallGenerator(curator.LLM):
     def _parse_function_call(self, raw_output: dict) -> dict:
         parsed = []
         for call in raw_output:
-            func = call.get("function", {})
-            name = func.get("name")
+            # Handle standard format with "function" wrapper
+            if "function" in call:
+                func = call["function"]
+                name = func.get("name")
+                args_str = func.get("arguments", "{}")
+            else:
+                # Handle flat format
+                name = call.get("name")
+                args_str = call.get("arguments", "{}")
+
             try:
-                args = json.loads(func.get("arguments", "{}"))
-            except json.JSONDecodeError:
-                args = func.get("arguments", {})  # fallback
+                args = json.loads(args_str)
+            except (json.JSONDecodeError, TypeError):
+                args = args_str  # fallback
             parsed.append({"name": name, "arguments": args})
 
         return json.dumps(parsed, ensure_ascii=False, indent=2)
@@ -104,19 +112,91 @@ class FunctionCallGenerator(curator.LLM):
             this_input["prompt"] = prompt
 
             message = choice.get("message", {})
+            # Convert message to dict if it's an object (like litellm Message object)
+            if hasattr(message, "model_dump"):
+                message = message.model_dump()
+            elif hasattr(message, "__dict__"):
+                message = message.__dict__
+
+            this_input["raw_output"] = message
+
             if "tool_calls" in message and message["tool_calls"]:
+                # Flatten tool_calls to match user requirement (no id, no type)
+                flat_tool_calls = []
+                for tc in message["tool_calls"]:
+                    if "function" in tc:
+                        flat_tool_calls.append({
+                            "name": tc["function"].get("name"),
+                            "arguments": tc["function"].get("arguments")
+                        })
+                    else:
+                        flat_tool_calls.append({
+                            "name": tc.get("name"),
+                            "arguments": tc.get("arguments")
+                        })
+                message["tool_calls"] = flat_tool_calls
+
                 this_input["function_call"] = self._parse_function_call(message["tool_calls"])
                 this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
             else:
                 # Handle the case where the model returns a string instead of a function call
-                function_call = extract_format(format="json", content=message.get("content", ""))
-                if function_call is None:
+                content = message.get("content", "")
+                
+                # Try to extract tool_call from <tool_call> tags
+                import re
+                tool_calls_list = []
+                tool_call_pattern = re.compile(r"<tool_call>\s*(.+?)\s*</tool_call>", re.DOTALL)
+                match = tool_call_pattern.search(content)
+                
+                if match:
+                    tool_call_block = match.group(1)
+                    # Try to parse line by line
+                    for line in tool_call_block.strip().splitlines():
+                        line = line.strip()
+                        if line:
+                            try:
+                                tool_calls_list.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                pass
+                    
+                    # If list is still empty, try parsing the whole block
+                    if not tool_calls_list:
+                        try:
+                            tool_calls_list.append(json.loads(tool_call_block))
+                        except json.JSONDecodeError:
+                            pass
+
+                    # Remove <tool_call> block from content
+                    content = tool_call_pattern.sub("", content).strip()
+                    
+                    # Update message content
+                    message["content"] = content
+
+                    # Populate message["tool_calls"]
+                    if tool_calls_list:
+                        import uuid
+                        new_tool_calls = []
+                        for tc in tool_calls_list:
+                            new_tool_calls.append({
+                             
+                                    "name": tc.get("name"),
+                                    "arguments": tc.get("arguments")
+                            
+                            })
+                        message["tool_calls"] = new_tool_calls
+                    
+                    # Set function_call
+                    this_input["function_call"] = json.dumps(tool_calls_list, ensure_ascii=False)
                     this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
-                    this_input["function_call"] = None
-                    # raise ValueError("The model did not return a valid function call.")
                 else:
-                    this_input["function_call"] = json.dumps(function_call, ensure_ascii=False)
-                    this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
+                    # Fallback to extract_format
+                    function_call = extract_format(format="json", content=content)
+                    if function_call is None:
+                        this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
+                        this_input["function_call"] = None
+                    else:
+                        this_input["function_call"] = json.dumps(function_call, ensure_ascii=False)
+                        this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
 
             print("----input------", this_input)
 

@@ -176,6 +176,8 @@ def evaluate_arguments(ground_truth, model_response, function_same):
 
 
 def safe_eval(x):
+    if isinstance(x, (dict, list)):
+        return x
     try:
         return ast.literal_eval(x)
     except Exception as e:
@@ -621,8 +623,17 @@ def postprocess_data(config):
 if __name__ == "__main__":
     import sys
 
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "configs/config.yaml"
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
+    else:
+        # Default to configs/config.yaml relative to this script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(base_dir, "configs", "config.yaml")
+
     config = load_config(config_path)
+    print(f"DEBUG: Config path used: {config_path}")
+    print(f"DEBUG: Config root value: {config.get('root')}")
+    print(f"DEBUG: Config input_file value: {config.get('input_file')}")
 
     # 根据配置文件中的steps配置自动执行相应步骤
     steps_config = config.get("steps", {})

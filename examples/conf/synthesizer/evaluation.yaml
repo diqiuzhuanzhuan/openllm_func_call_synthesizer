@@ -5,6 +5,7 @@ mcp_servers:
   "ugreen_mcp":
     transport: "http://192.168.111.9:12000/mcp"
 
+purpose: "function_call"  # or mcp_intent
 
 query_generation:
   enable: False

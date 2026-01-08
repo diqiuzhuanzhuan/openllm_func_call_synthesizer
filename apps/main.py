@@ -32,6 +32,8 @@ from fastmcp import Client
 from omegaconf import DictConfig, OmegaConf
 from rich import pretty
 
+
+
 from openllm_func_call_synthesizer.core.critic import Critic
 from openllm_func_call_synthesizer.core.synthesizer import (
     FunctionCallGenerator,
@@ -44,9 +46,9 @@ from openllm_func_call_synthesizer.utils import (
 from openllm_func_call_synthesizer.utils.dataset_utils import (
     format_openai,
 )
-
+import os
 load_dotenv(override=True)
-
+print(os.environ.get("OPENAI_API_BASE"))
 
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
     """Get tools from MCP server."""
@@ -152,6 +154,7 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     # Loop over configured languages to generate multilingual query variations
     languages = query_generator_cfg.get("languages", ["English"])
     output_datasets = []
+    
     for language in languages:
         for name, provider in query_generator_cfg.providers.items():
             print(f"provider: {name}, language: {language}")
@@ -179,10 +182,14 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     out_dir.mkdir(parents=True, exist_ok=True)
     # Save in multiple formats
     # Save JSON Lines under 'train.jsonl' so HuggingFace load_dataset can load it as the 'train' split
-    combined.to_json(str(out_dir / "train.jsonl"), orient="records", lines=True)
-    combined.to_csv(str(out_dir / "output.csv"))
+    combined.to_json(str(out_dir / "fc_evaluate.jsonl"), orient="records", lines=True)
+    df_combined = combined.to_pandas()
+    df_combined.to_excel(str(out_dir / "output.xlsx"), index=False)
+    df_combined.drop(columns=["functions"], errors="ignore").to_excel(
+        str(out_dir / "output_no_function.xlsx"), index=False
+    )
     combined.to_parquet(str(out_dir / "output.parquet"))
-    print(f"Dataset saved to {out_dir} in train.jsonl, csv, parquet formats.")
+    print(f"Dataset saved to {out_dir} in jsonl, xlsx, parquet formats.")
     # You can load the JSONL with:
     load_dataset("json", data_files={"train": str(out_dir / "train.jsonl")})
 
@@ -191,12 +198,20 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     # Load the function dataset
     function_call_cfg = cfg.synthesizer.function_call_generation
     function_dataset_path = Path(function_call_cfg.function_dataset)
-    if not Path(function_dataset_path).exists():
+    if not function_dataset_path.exists():
         raise FileNotFoundError(f"File {function_dataset_path} not found")
-    dataset = load_dataset("json", data_files={"train": str(function_dataset_path / "train.jsonl")})
+
+    if function_dataset_path.is_file():
+        data_files = {"train": str(function_dataset_path)}
+    else:
+        data_files = {"train": str(function_dataset_path / "train.jsonl")}
+
+    dataset = load_dataset("json", data_files=data_files)
+
     # hashes = dataset["train"].("function_hash")
     # print(f"Found {len(hashesunique)} unique functions")
     # import random
+
 
     # chosen = random.sample(hashes, len(hashes))
     # filter to only those hashes, select all currently because the number of functions is small
@@ -207,6 +222,12 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
+
+    # Set OLLAMA_API_BASE if base_url is present in config
+    if "base_url" in fc_kwargs:
+        os.environ["OLLAMA_API_BASE"] = fc_kwargs["base_url"]
+        print(f"Set OLLAMA_API_BASE to {fc_kwargs['base_url']}")
+
     generation_params = fc_kwargs.get("generation_params", {})
     generation_params.update({"tools": function_docs["tools"]})
     fc_kwargs["generation_params"] = generation_params
@@ -217,49 +238,66 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     else:
         dataset = dataset["train"]
     dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
-    fcg = function_call_generator(dataset=dataset)
-    print("---------------------fcg.dataset-------", fcg.dataset)
-
-    # 这里fcg.dataset每行都是一个dict，直接输出即可
+    
     output_dir = Path(function_call_cfg.output_dir) / function_call_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # 专门写 jsonl，每行为一个dict
     jsonl_path = output_dir / "train.jsonl"
-    with open(jsonl_path, "w", encoding="utf-8") as f:
-        for row in fcg.dataset:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    pd.DataFrame(fcg.dataset).to_csv(str(output_dir / "output.csv"), index=False)
-    pd.DataFrame(fcg.dataset).to_parquet(str(output_dir / "output.parquet"), index=False)
-    print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
+    fcg = function_call_generator(dataset=dataset)
+    fcg.dataset.to_pandas().to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+    all_results = fcg.dataset
+
+    df_all = pd.DataFrame(all_results)
+    df_all.to_excel(str(output_dir / "output.xlsx"), index=False)
+    df_all.drop(columns=["functions"], errors="ignore").to_excel(
+        str(output_dir / "output_no_function.xlsx"), index=False
+    )
+    df_all.to_parquet(str(output_dir / "output.parquet"), index=False)
+    print(f"Dataset saved to {output_dir} in train.jsonl, xlsx, parquet formats.")
 
 
 def critic_function_call_dataset(cfg: DictConfig):
     critic_cfg = cfg.synthesizer.critic
+    purpose= cfg.synthesizer.purpose
     function_call_dataset_path = Path(critic_cfg.function_call_dataset)
     if not function_call_dataset_path.exists():
         raise FileNotFoundError(f"File {function_call_dataset_path} not found")
-    dataset = load_dataset("json", data_files={"train": str(function_call_dataset_path / "train.jsonl")})
+
+    if function_call_dataset_path.is_file():
+        data_files = {"train": str(function_call_dataset_path)}
+    else:
+        data_files = {"train": str(function_call_dataset_path / "train.jsonl")}
+
+    dataset = load_dataset("json", data_files=data_files)
     cg_args = OmegaConf.to_container(cfg.synthesizer.critic.provider, resolve=True)
     cg_args["query_field"] = critic_cfg.query_field
     cg_args["task_prompt_field"] = critic_cfg.task_prompt_field
     cg_args["label_field"] = critic_cfg.label_field
     cg_args["functions_field"] = critic_cfg.functions_field
     cg_args["response_field"] = critic_cfg.response_field
+    cg_args["purpose"] = purpose
     critic_generate = Critic(**cg_args)
     max_num = cfg.synthesizer.function_call_generation.max_num
     if max_num > 0:
         dataset = dataset["train"].select(range(max_num))
     else:
         dataset = dataset["train"]
-    cg = critic_generate(dataset=dataset)
+
     output_dir = Path(critic_cfg.output_dir) / critic_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
-    cg.dataset.to_json(str(output_dir / "train.jsonl"), orient="records", lines=True)
-    cg.dataset.to_csv(str(output_dir / "output.csv"))
-    cg.dataset.to_parquet(str(output_dir / "output.parquet"))
-    print(f"Dataset saved to {output_dir} in train.jsonl, csv, parquet formats.")
+    jsonl_path = output_dir / "train.jsonl"
+
+    cg = critic_generate(dataset=dataset)
+    cg.dataset.to_pandas().to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+    all_results = cg.dataset
+
+    df_all = pd.DataFrame(all_results)
+    df_all.to_excel(str(output_dir / "output.xlsx"), index=False)
+    df_all.drop(columns=["functions"], errors="ignore").to_excel(
+        str(output_dir / "output_no_function.xlsx"), index=False
+    )
+    df_all.to_parquet(str(output_dir / "output.parquet"), index=False)
+    print(f"Dataset saved to {output_dir} in train.jsonl, xlsx, parquet formats.")
 
 
 def create_llama_factory_compatible_dataset(cfg: DictConfig):

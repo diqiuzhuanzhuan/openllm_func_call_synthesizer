@@ -5,6 +5,7 @@
 
 import ast
 import json
+import re
 
 import pandas as pd
 
@@ -43,6 +44,10 @@ def parse_react_to_json(s):
     # to string
     if not isinstance(s, str):
         s = str(s)
+    
+    # 移除 <think>...</think> 标签及其内容
+    s = re.sub(r'<think>.*?</think>', '', s, flags=re.DOTALL)
+    
     s = s.strip()
 
     if not s:
@@ -131,6 +136,14 @@ def test_parse_function():
         "{'intent': 'create_album', 'slots': {'album_name': '我的相册', 'album_type': 'normal'}}",
         # 情况10: 无效字符串
         "invalid json string",
+        # 情况11: 带有 <think> 标签的字符串
+        "<think> some thinking process {'ignore': 'me'} </think> {'intent': 'music_play_control', 'slots': {'title': '周杰伦'}}",
+        # 情况12: 带有 <think> 标签且有多行
+        """<think>
+        some thinking process
+        {'ignore': 'me'}
+        </think>
+        {'intent': 'music_play_control', 'slots': {'title': '周杰伦'}}""",
     ]
 
     print("=== 测试parse_react_to_json函数 ===\n")

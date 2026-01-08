@@ -31,7 +31,7 @@ def load_model_and_tokenizer(model_name):
     return tokenizer, model
 
 
-with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/examples/function_docs.json") as f:
+with open("/data/work/CHenXuFei/openllm_func_call_synthesizer/examples/function_docs.json") as f:
     fun_ = json.load(f)
 
 FUNCTIONS = fun_

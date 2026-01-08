@@ -12,7 +12,7 @@ system_prompt = (
     "You need to determine if the function call is correct for the query."
 )
 
-with open("/data0/work/SusieSu/project/openllm_func_call_synthesizer/openai_tools.json") as f:
+with open("/data/work/CHenXuFei/openai_tools.json") as f:
     openai_format_tools = json.load(f)
 
 client = OpenAI(base_url="http://192.168.111.3:8019/v1", api_key="dummy")
