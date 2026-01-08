@@ -34,12 +34,12 @@ load_dotenv()
 def main():
     loop = asyncio.get_event_loop()
     cfg = {"transport": "http://192.168.56.200:12000/mcp"}
-    cfg = {"transport": "http://192.168.111.9:12000/mcp"}
+    cfg = {"transport": "http://192.168.111.11:8000/mcp"}
     mcp_tools = loop.run_until_complete(get_mcp_tools(cfg))
     openai_format_tools = convert_to_openai_tools(mcp_tools)
-    write_json_file(openai_format_tools["tools"], "openai_tools.json")
+    write_json_file(openai_format_tools["tools"], "./openai_tools.json")
     mcp_format_tools = convert_to_mcp_tools(openai_format_tools["tools"])
-    write_json_file(mcp_format_tools["tools"], "mcp_tools.json")
+    write_json_file(mcp_format_tools["tools"], "./mcp_tools.json")
     from rich import pretty
 
     pretty.pprint(openai_format_tools)
@@ -47,7 +47,7 @@ def main():
     from openai import OpenAI
 
     # client = OpenAI(base_url="http://192.168.111.6:8000/v1", api_key="dummy")
-    client = OpenAI(base_url="http://192.168.111.4:8010/v1", api_key="dummy")
+    client = OpenAI(base_url="http://192.168.111.11:11434/v1", api_key="dummy")
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
     ]
@@ -81,7 +81,7 @@ def main():
             } 
  
         response = client.chat.completions.create(
-            model="qwen3_1.7b_mix",
+            model="qwen3_1.7b",
             messages=messages,
             tools=openai_format_tools["tools"],  # ⚡ 告诉模型有哪些工具可调用
         )

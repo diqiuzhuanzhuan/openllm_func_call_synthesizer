@@ -67,3 +67,45 @@ export GEMINI_BASE_URL="https://api9.xhub.chat/v1"
   "python.terminal.activateEnvironment": true
 }
 ```
+
+
+# 通过种子query  扩展query 及  生成response
+examples/function_docs.add_seed_query.example.json
+function_docs.json样例
+```
+{
+    "tools": [
+      {
+        "name": "search_photos",
+        "description": "Search for photos or images",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "description": "The search keyword for photos or images. It can be descriptive text or a file name, e.g., 'photos taken last August' or 'dog on the grass'."
+            }
+          },
+          "required": [
+            "keyword"
+          ],
+          "additionalProperties": false
+        },
+        "query": "Search for photos or images about Summer"
+      }
+    ]
+}
+
+```
+
+# 生成最新的mcp工具定义
+python /apps/function_call.py
+结果保存到了根目录。 
+
+# 常用git 命令
+获取最新代码， 把自己代码更新 放到后面
+git fetch； git rebase
+
+git add .
+git commit -m 'your comment'
+git push
