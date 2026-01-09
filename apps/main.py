@@ -32,8 +32,6 @@ from fastmcp import Client
 from omegaconf import DictConfig, OmegaConf
 from rich import pretty
 
-
-
 from openllm_func_call_synthesizer.core.critic import Critic
 from openllm_func_call_synthesizer.core.synthesizer import (
     FunctionCallGenerator,
@@ -48,7 +46,6 @@ from openllm_func_call_synthesizer.utils.dataset_utils import (
 )
 import os
 load_dotenv(override=True)
-print(os.environ.get("OPENAI_API_BASE"))
 
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
     """Get tools from MCP server."""

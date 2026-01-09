@@ -29,7 +29,7 @@ from rich import pretty
 from xxhash import xxh64
 
 from openllm_func_call_synthesizer.core.formatter import QUERY_GENERATE_SYSTEM_HEADER
-from openllm_func_call_synthesizer.utils import extract_format
+from openllm_func_call_synthesizer.utils import extract_format, parse_hermes_tool_calls
 
 
 class FunctionCallGenerator(curator.LLM):
@@ -119,84 +119,8 @@ class FunctionCallGenerator(curator.LLM):
                 message = message.__dict__
 
             this_input["raw_output"] = message
-
-            if "tool_calls" in message and message["tool_calls"]:
-                # Flatten tool_calls to match user requirement (no id, no type)
-                flat_tool_calls = []
-                for tc in message["tool_calls"]:
-                    if "function" in tc:
-                        flat_tool_calls.append({
-                            "name": tc["function"].get("name"),
-                            "arguments": tc["function"].get("arguments")
-                        })
-                    else:
-                        flat_tool_calls.append({
-                            "name": tc.get("name"),
-                            "arguments": tc.get("arguments")
-                        })
-                message["tool_calls"] = flat_tool_calls
-
-                this_input["function_call"] = self._parse_function_call(message["tool_calls"])
-                this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
-            else:
-                # Handle the case where the model returns a string instead of a function call
-                content = message.get("content", "")
-                
-                # Try to extract tool_call from <tool_call> tags
-                import re
-                tool_calls_list = []
-                tool_call_pattern = re.compile(r"<tool_call>\s*(.+?)\s*</tool_call>", re.DOTALL)
-                match = tool_call_pattern.search(content)
-                
-                if match:
-                    tool_call_block = match.group(1)
-                    # Try to parse line by line
-                    for line in tool_call_block.strip().splitlines():
-                        line = line.strip()
-                        if line:
-                            try:
-                                tool_calls_list.append(json.loads(line))
-                            except json.JSONDecodeError:
-                                pass
-                    
-                    # If list is still empty, try parsing the whole block
-                    if not tool_calls_list:
-                        try:
-                            tool_calls_list.append(json.loads(tool_call_block))
-                        except json.JSONDecodeError:
-                            pass
-
-                    # Remove <tool_call> block from content
-                    content = tool_call_pattern.sub("", content).strip()
-                    
-                    # Update message content
-                    message["content"] = content
-
-                    # Populate message["tool_calls"]
-                    if tool_calls_list:
-                        import uuid
-                        new_tool_calls = []
-                        for tc in tool_calls_list:
-                            new_tool_calls.append({
-                             
-                                    "name": tc.get("name"),
-                                    "arguments": tc.get("arguments")
-                            
-                            })
-                        message["tool_calls"] = new_tool_calls
-                    
-                    # Set function_call
-                    this_input["function_call"] = json.dumps(tool_calls_list, ensure_ascii=False)
-                    this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
-                else:
-                    # Fallback to extract_format
-                    function_call = extract_format(format="json", content=content)
-                    if function_call is None:
-                        this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
-                        this_input["function_call"] = None
-                    else:
-                        this_input["function_call"] = json.dumps(function_call, ensure_ascii=False)
-                        this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
+            this_input["function_call"] = parse_hermes_tool_calls(message)
+            this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
 
             print("----input------", this_input)
 

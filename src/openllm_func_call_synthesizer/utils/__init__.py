@@ -44,6 +44,9 @@ from .utils import (
 from .utils import (
     tool_format_convert as tool_format_convert,
 )
+from .utils import (
+    parse_hermes_tool_calls as parse_hermes_tool_calls,
+)
 
 __ALL__ = [
     "read_yaml",
@@ -54,4 +57,5 @@ __ALL__ = [
     "ToolMetadata",
     "tool_format_convert",
     "get_mcp_tools",
+    "parse_hermes_tool_calls",
 ]

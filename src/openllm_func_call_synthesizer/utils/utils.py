@@ -26,8 +26,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-
+from typing import Any, Dict, Any, List
 import pandas as pd
 import yaml
 from datasets import Dataset
@@ -165,6 +164,107 @@ def convert_to_gemini_tools(tools: list[Tool]) -> dict[str, list[dict[str, Any]]
     return {"tools": functions}
 
 
+def parse_hermes_tool_calls(message: Any) -> List[Dict[str, Any]]:
+    """
+    Parse one or multiple Hermes-style tool calls.
+
+    Returns:
+        [
+            {
+                "name": str,
+                "arguments": dict
+            },
+            ...
+        ]
+    """
+
+    tool_calls = []
+
+    # ---------- Case 1: string with <tool_call> blocks ----------
+    print("message: ", message)
+    if isinstance(message, str):
+        print("message: ", message)
+        matches = re.findall(
+            r"<tool_call>\s*(\{.*?\})\s*</tool_call>",
+            message,
+            re.S
+        )
+        print("matches: ", matches)
+
+        for block in matches:
+            try:
+                payload = json.loads(block)
+                args = payload.get("arguments", {})
+                tool_calls.append({
+                    "name": payload["name"],
+                    "arguments": json.loads(args) if isinstance(args, str) else args
+                })
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in tool_call: {block}") from e
+
+        if tool_calls:
+            return tool_calls
+
+        # ---------- Fallback: {"tool_call": {...}} or {"tool_calls": [...]} ----------
+        try:
+            data = json.loads(message)
+            if "tool_calls" in data:
+                return [
+                    {
+                        "name": tc["name"],
+                        "arguments": tc.get("arguments", {})
+                    }
+                    for tc in data["tool_calls"]
+                ]
+            if "tool_call" in data:
+                return [{
+                    "name": data["tool_call"]["name"],
+                    "arguments": data["tool_call"].get("arguments", {})
+                }]
+        except json.JSONDecodeError:
+            pass
+
+    # ---------- Case 2: dict input ----------
+    if isinstance(message, dict):
+        # OpenAI-style
+        if "tool_calls" in message and message["tool_calls"]:
+            print("tool_calls: ", message["tool_calls"])
+            for tool in message["tool_calls"]:
+                function = tool.get("function", {})
+                args = function.get("arguments", {})
+                if isinstance(args, str):
+                    args = json.loads(args)
+                tool_calls.append({
+                    "name": function["name"],
+                    "arguments": args
+                })
+            return tool_calls
+
+        # OpenAI legacy
+        if "function_call" in message and message["function_call"]:
+            fc = message["function_call"]
+            args = fc.get("arguments", {})
+            if isinstance(args, str):
+                args = json.loads(args)
+            return [{
+                "name": fc["name"],
+                "arguments": args
+            }]
+
+        # Pure Hermes JSON
+        if "name" in message and "arguments" in message:
+            return [{
+                "name": message["name"],
+                "arguments": message["arguments"]
+            }]
+
+        # hermes raw content
+        if "content" in message:
+            return parse_hermes_tool_calls(message["content"])
+
+    return []
+
+
 def extract_format(format: str = "json", content: str = "") -> Any:
     import json
     import re
@@ -184,6 +284,8 @@ def extract_format(format: str = "json", content: str = "") -> Any:
                     return json.loads(content)
             except json.JSONDecodeError:
                 pass
+    elif format == "":
+        pass
     return None
 
 
