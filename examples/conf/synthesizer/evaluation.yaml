@@ -80,7 +80,7 @@ function_call_generation:
 
 
 critic:
-  enable: False
+  enable: True
   function_call_dataset: "data/function_call_qwen3_1.7b"
   output_dir: "data"
   # cirtic need 'query', 'label', 'task_prompt'
