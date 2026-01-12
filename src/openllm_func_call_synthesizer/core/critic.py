@@ -208,7 +208,7 @@ class Critic(curator.LLM):
             system_prompt= intent_system_prompt
         else:
             raise ValueError("purpose is wrong,you must provide \"function_call\"or \"mcp_intent\"")
-    
+        
         
         task_prompt = input.get(self.task_prompt_field, "")
         if not task_prompt:
@@ -246,7 +246,11 @@ class Critic(curator.LLM):
         """Parse the response to extract the function call or the message."""
         input["prompt"] = self.prompt(input)
         json_extract = extract_format(format="json", content=response["choices"][0]["message"]["content"])
-        score, reason = json_extract["score"], json_extract["reason"]
-        input["score"] = score
-        input["reason"] = reason
+        if json_extract is None:
+            input["score"] = 0
+            input["reason"] = "Failed to parse critic response as JSON"
+        else:
+            score, reason = json_extract.get("score", 0), json_extract.get("reason", "No reason provided")
+            input["score"] = score
+            input["reason"] = reason
         return input
