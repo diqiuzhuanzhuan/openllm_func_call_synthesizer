@@ -47,6 +47,47 @@ from openllm_func_call_synthesizer.utils.dataset_utils import (
 import os
 load_dotenv(override=True)
 
+
+def _serialize_nested_for_parquet(ds):
+    """Convert nested (list/dict) columns to JSON strings so pyarrow can write parquet.
+
+    This inspects a small sample of the dataset to find nested columns and maps
+    a serializer over the full dataset only when needed to avoid unnecessary work.
+    """
+    try:
+        # import here to avoid hard dependency at module import time
+        from datasets import Dataset
+    except Exception:
+        Dataset = None
+
+    # Only operate on HuggingFace Dataset objects
+    if Dataset is None or not isinstance(ds, Dataset):
+        return ds
+
+    length = len(ds)
+    sample_n = min(10, length)
+    if sample_n <= 0:
+        return ds
+
+    nested_cols = set()
+    for ex in ds.select(range(sample_n)):
+        for k, v in ex.items():
+            if isinstance(v, (list, dict)):
+                nested_cols.add(k)
+
+    if not nested_cols:
+        return ds
+
+    def _serializer(example):
+        for k in nested_cols:
+            v = example.get(k)
+            if isinstance(v, (list, dict)):
+                example[k] = json.dumps(v, ensure_ascii=False)
+        return example
+
+    # Map to serialize nested fields. Keep it single-threaded to avoid pickling issues.
+    return ds.map(_serializer)
+
 async def get_mcp_tools(mcp_cfg: dict) -> list[dict]:
     """Get tools from MCP server."""
     mcp_cfg = mcp_cfg
@@ -220,11 +261,6 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
 
-    # Set OLLAMA_API_BASE if base_url is present in config
-    if "base_url" in fc_kwargs:
-        os.environ["OLLAMA_API_BASE"] = fc_kwargs["base_url"]
-        print(f"Set OLLAMA_API_BASE to {fc_kwargs['base_url']}")
-
     generation_params = fc_kwargs.get("generation_params", {})
     generation_params.update({"tools": function_docs["tools"]})
     fc_kwargs["generation_params"] = generation_params
@@ -241,7 +277,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     jsonl_path = output_dir / "train.jsonl"
 
     fcg = function_call_generator(dataset=dataset)
-    fcg.dataset.to_pandas().to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+    fcg.dataset.to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
     all_results = fcg.dataset
 
     df_all = pd.DataFrame(all_results)
@@ -255,7 +291,7 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
 
 def critic_function_call_dataset(cfg: DictConfig):
     critic_cfg = cfg.synthesizer.critic
-    purpose= cfg.synthesizer.purpose
+    purpose = cfg.synthesizer.purpose
     function_call_dataset_path = Path(critic_cfg.function_call_dataset)
     if not function_call_dataset_path.exists():
         raise FileNotFoundError(f"File {function_call_dataset_path} not found")
@@ -285,7 +321,8 @@ def critic_function_call_dataset(cfg: DictConfig):
     jsonl_path = output_dir / "train.jsonl"
 
     cg = critic_generate(dataset=dataset)
-    cg.dataset.to_pandas().to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+    cg.dataset.to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+    #cg.dataset.to_pandas().to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
     all_results = cg.dataset
 
     df_all = pd.DataFrame(all_results)
@@ -302,7 +339,12 @@ def create_llama_factory_compatible_dataset(cfg: DictConfig):
     critic_dataset_path = Path(llama_factory_cfg.critic_dataset)
     if not critic_dataset_path.exists():
         raise FileNotFoundError(f"File {critic_dataset_path} not found")
-    dataset = load_dataset("json", data_files={"train": str(critic_dataset_path / "train.jsonl")})
+    if critic_dataset_path.is_file():
+        data_files = {"train": str(critic_dataset_path)}
+    else:
+        data_files = {"train": str(critic_dataset_path / "train.jsonl")}
+    print(data_files)
+    dataset = load_dataset("json", data_files=data_files)
     if llama_factory_cfg.score_field in dataset["train"].column_names:
         dataset = dataset.filter(lambda x: x[llama_factory_cfg.score_field] >= llama_factory_cfg.score_threshold)
 
