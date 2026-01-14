@@ -120,8 +120,8 @@ class FunctionCallGenerator(curator.LLM):
 
             this_input["raw_output"] = message
             parsed_fc = parse_hermes_tool_calls(message)
-            # 无论是否解析到tool_calls，都序列化为JSON字符串（空列表变成"[]"）
-            this_input["function_call"] = json.dumps(parsed_fc, ensure_ascii=False)
+            # 无论是否解析到tool_calls，都序列化为JSON字符串;如果是
+            this_input["function_call"] = json.dumps(parsed_fc, ensure_ascii=False) if parsed_fc else ""
             this_input["answer"] = json.dumps(message, ensure_ascii=False, indent=2)
 
             print("----input------", this_input)

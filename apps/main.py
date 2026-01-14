@@ -223,8 +223,8 @@ def generate_query_dataset(cfg: DictConfig, function_docs: list[dict]):
     combined.to_json(str(out_dir / "fc_evaluate.jsonl"), orient="records", lines=True)
     df_combined = combined.to_pandas()
     df_combined.to_excel(str(out_dir / "output.xlsx"), index=False)
-    df_combined.drop(columns=["functions"], errors="ignore").to_excel(
-        str(out_dir / "output_no_function.xlsx"), index=False
+    df_combined.drop(columns=["functions","prompt"], errors="ignore").to_excel(
+        str(out_dir / "output_no_function_prompt.xlsx"), index=False
     )
     combined.to_parquet(str(out_dir / "output.parquet"))
     print(f"Dataset saved to {out_dir} in jsonl, xlsx, parquet formats.")
@@ -282,8 +282,8 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
 
     df_all = pd.DataFrame(all_results)
     df_all.to_excel(str(output_dir / "output.xlsx"), index=False)
-    df_all.drop(columns=["functions"], errors="ignore").to_excel(
-        str(output_dir / "output_no_function.xlsx"), index=False
+    df_all.drop(columns=["functions","prompt"], errors="ignore").to_excel(
+        str(output_dir / "output_no_function_prompt.xlsx"), index=False
     )
     df_all.to_parquet(str(output_dir / "output.parquet"), index=False)
     print(f"Dataset saved to {output_dir} in train.jsonl, xlsx, parquet formats.")
@@ -327,8 +327,8 @@ def critic_function_call_dataset(cfg: DictConfig):
 
     df_all = pd.DataFrame(all_results)
     df_all.to_excel(str(output_dir / "output.xlsx"), index=False)
-    df_all.drop(columns=["functions"], errors="ignore").to_excel(
-        str(output_dir / "output_no_function.xlsx"), index=False
+    df_all.drop(columns=["functions","prompt"], errors="ignore").to_excel(
+        str(output_dir / "output_no_function_prompt.xlsx"), index=False
     )
     df_all.to_parquet(str(output_dir / "output.parquet"), index=False)
     print(f"Dataset saved to {output_dir} in train.jsonl, xlsx, parquet formats.")

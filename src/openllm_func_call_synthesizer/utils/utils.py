@@ -270,6 +270,7 @@ def extract_format(format: str = "json", content: str = "") -> Any:
     import re
 
     if format == "json":
+        # Strategy 1: Look for ```json ... ``` code blocks
         pattern = re.compile(r"```json\s*([\s\S]*?)\s*```")
         match = pattern.search(content)
         if match:
@@ -278,12 +279,35 @@ def extract_format(format: str = "json", content: str = "") -> Any:
                 return data
             except json.JSONDecodeError:
                 pass
-        else:
-            try:
-                if json.loads(content):
-                    return json.loads(content)
-            except json.JSONDecodeError:
+        
+        # Strategy 2: Look for ``` ... ``` code blocks (without language specifier)
+        pattern_plain = re.compile(r"```\s*([\s\S]*?)\s*```")
+        match_plain = pattern_plain.search(content)
+        if match_plain:
+             try:
+                data = json.loads(match_plain.group(1))
+                return data
+             except json.JSONDecodeError:
                 pass
+
+        # Strategy 3: Try to parse the entire content
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 4: Try to find the first JSON object using regex
+        # This regex looks for { ... } ensuring balanced braces is hard with regex, 
+        # but we can try to find the first { and the last }
+        try:
+            start_idx = content.find('{')
+            end_idx = content.rfind('}')
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_candidate = content[start_idx : end_idx + 1]
+                return json.loads(json_candidate)
+        except json.JSONDecodeError:
+            pass
+            
     elif format == "":
         pass
     return None
