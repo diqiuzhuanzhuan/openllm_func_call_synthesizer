@@ -105,10 +105,10 @@ def change_excel_to_jsonl(excel_file_path, output_jsonl_path):
     print(f"jsonl已写入 {output_jsonl_path}")
 
 if __name__ == "__main__":
-    root = "/data0/work/SusieSu/project/openllm_datas_and_temp_codes/data_1212_functino_call/train_data_fc_1222/"
+    root = "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114_fixed/"
     json_file_path = root + "mcp_test_fc.json"
     output_jsonl_path = root + "mcp_test_fc.jsonl"
     output_excel_path = root + "mcp_test_fc.xlsx"
-    # change_json_to_jsonl(json_file_path, output_jsonl_path)
+    change_json_to_jsonl(json_file_path, output_jsonl_path)
 
-    change_json_to_excel(json_file_path, output_excel_path)
+    #change_json_to_excel(json_file_path, output_excel_path)

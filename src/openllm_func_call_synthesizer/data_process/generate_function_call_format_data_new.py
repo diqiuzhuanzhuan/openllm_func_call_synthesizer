@@ -275,11 +275,14 @@ def make_message_row_simple(row):
     ]
 
     has_fc = pd.notnull(row.get(key_output_column)) and str(row[key_output_column]).strip() != ""
-
+    
+    tool_calls = []
     if has_fc:
         # 用function_call生成tool_calls
         tool_calls = parse_function_call(row[key_output_column])
         print('----tool_calls-----', tool_calls)
+
+    if tool_calls:
         assistant_msg = {"content": "", "role": "assistant", "tool_calls": tool_calls}
     elif pd.notnull(row.get("answer")):
         # 没有function_call，但有answer → 读取answer的content
@@ -298,7 +301,7 @@ if __name__ == "__main__":
     #     "/data0/work/SusieSu/project/openllm_func_call_synthesizer/data/function_call_critic_1112_v2/output.csv"
     # )
     # 读取合并去重后的数据
-    df = pd.read_excel('/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114/merged_function_call_data_0114_dedup.xlsx')
+    df = pd.read_excel('/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114_fixed/raw_function_call_data_0114_processed.xlsx')
     print(df.shape, df.columns)
     # print(df["score"].value_counts().sort_index(ascending=False))
     
@@ -321,7 +324,7 @@ if __name__ == "__main__":
     
     # 保存到原文件（覆盖，添加lora_input列）
     df.to_excel(
-        "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114/merged_function_call_data_0114_with_messages.xlsx",
+        "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114_fixed/raw_function_call_data_0114_processed_with_messages.xlsx",
         index=False
     )
     print(f"已保存，共 {len(df)} 条数据")

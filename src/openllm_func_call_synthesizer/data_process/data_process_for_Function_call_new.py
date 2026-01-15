@@ -150,7 +150,7 @@ if __name__ == "__main__":
         # 合并后的数据 转成train.jsonl 格式
         # 读取已经格式化好的数据（包含lora_input列）
         df = read_excel(
-            "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114/merged_function_call_data_0114_with_messages.xlsx"
+            "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114_fixed/raw_function_call_data_0114_processed_with_messages.xlsx"
             
         )
         df = df.where(pd.notnull(df), None)
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         # 把df写到jsonl文件里，使用lora_input列（已按图片格式处理好）
         count = 0
         with open(
-            os.path.join(DATA_ROOT, "train_data_fc_0114/train.jsonl"),
+            os.path.join(DATA_ROOT, "train_data_fc_0114_fixed/train.jsonl"),
             "w",
             encoding="utf-8",
         ) as fout:
@@ -184,9 +184,9 @@ if __name__ == "__main__":
         print(f"已生成jsonl文件，共 {count} 条数据")
         
     if split_fc_train_dev_test:
-        critic_file = "train_data_fc_0114"
+        critic_file = "train_data_fc_0114_fixed"
 
         input_file = os.path.join(DATA_ROOT, critic_file, "train.jsonl")
 
-        output_root = os.path.join(DATA_ROOT, "train_data_fc_0114")
+        output_root = os.path.join(DATA_ROOT, "train_data_fc_0114_fixed")
         split_fc_data(input_file, output_root)
