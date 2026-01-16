@@ -161,7 +161,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         import ast
-        # 把df写到jsonl文件里，使用lora_input列（已按图片格式处理好）
+        # 把df写到jsonl文件里，使用lora_input列
         count = 0
         with open(
             os.path.join(DATA_ROOT, "train_data_fc_0114_fixed/train.jsonl"),

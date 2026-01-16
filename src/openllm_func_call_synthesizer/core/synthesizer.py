@@ -40,9 +40,10 @@ class FunctionCallGenerator(curator.LLM):
     def prompt(self, input: dict) -> str:
         """The prompt is used to generate the function call."""
         # Prepare a readable listing of available functions
-        return f"""
-        {input["query"]}
-        """
+        # return f"""
+        # {input["query"]}
+        # """
+        return input["query"].strip()
 
     def _parse_function_call(self, raw_output: dict) -> dict:
         parsed = []
@@ -134,7 +135,8 @@ class FunctionCallGenerator(curator.LLM):
             if "function_call" in this_input:
                 pretty.pprint("function_call: ")
                 pretty.pprint(this_input["function_call"])
-
+            pretty.pprint("gt_tool_calls: ")
+            pretty.pprint(this_input.get("gt_tool_calls",""))
             input_ls.append(this_input)
         # Deduplicate before return
         if len(input_ls) > 1:
