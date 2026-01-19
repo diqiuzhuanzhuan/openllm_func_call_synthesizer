@@ -260,25 +260,63 @@ def generate_function_call_dataset(cfg: DictConfig, mcp_tools: list[dict]):
     # functions = sampled["function"]
     fc_kwargs = OmegaConf.to_container(function_call_cfg.provider, resolve=True)
     function_docs = tool_format_convert(mcp_tools, fc_kwargs["model_name"])
-
+    
     generation_params = fc_kwargs.get("generation_params", {})
     generation_params.update({"tools": function_docs["tools"]})
     fc_kwargs["generation_params"] = generation_params
-    function_call_generator = FunctionCallGenerator(**fc_kwargs)
-    max_num = function_call_cfg.max_num
-    if max_num > 0:
-        dataset = dataset["train"].select(range(max_num))
-    else:
-        dataset = dataset["train"]
-    dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
     
+    # Use the new Ollama class if backend is ollama, otherwise standard
+    from openllm_func_call_synthesizer.core.synthesizer import FunctionCallGenerator, OllamaFunctionCallGenerator
+    
+    # Check if we should use Ollama local generator (custom logic)
+    # You might want to add a config flag for this, e.g. provider.backend="ollama_local"
+    # For now, let's assume if "ollama" is in the model name or backend config, we switch.
+    # But to be safe and explicit based on your request:
+    
+    if fc_kwargs.get("backend") == "ollama" or "host" in fc_kwargs:
+       print("Using local OllamaFunctionCallGenerator...")
+       # Adjust kwargs for Ollama class
+       ollama_kwargs = {
+           "model_name": fc_kwargs.get("model_name"),
+           "host": fc_kwargs.get("host", "http://localhost:11434"),
+           "tokenizer_path": fc_kwargs.get("tokenizer_path", "Qwen/Qwen3-1.7B"),
+           "generation_params": generation_params
+       }
+       function_call_generator = OllamaFunctionCallGenerator(**ollama_kwargs)
+       
+       # Prepare dataset same as standard flow
+       max_num = function_call_cfg.max_num
+       if max_num > 0:
+           ds = dataset["train"].select(range(max_num))
+       else:
+           ds = dataset["train"]
+           
+       ds = ds.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
+       
+       dataset = function_call_generator(ds)
+       # Result is already a dataset, so we can skip the next call logic or adapt it
+       # The original code acted as: fcg = Generator(); result = fcg(dataset)
+       # Here we already got result. Let's make it compatible.
+       all_results = dataset
+    else:
+        function_call_generator = FunctionCallGenerator(**fc_kwargs)
+        max_num = function_call_cfg.max_num
+        if max_num > 0:
+            dataset = dataset["train"].select(range(max_num))
+        else:
+            dataset = dataset["train"]
+        dataset = dataset.map(lambda x: {"functions": json.dumps(function_docs["tools"], ensure_ascii=False)})
+        
+        fcg = function_call_generator(dataset=dataset)
+        # fcg.dataset.to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
+        all_results = fcg.dataset
+
     output_dir = Path(function_call_cfg.output_dir) / function_call_cfg.name
     output_dir.mkdir(parents=True, exist_ok=True)
     jsonl_path = output_dir / "train.jsonl"
-
-    fcg = function_call_generator(dataset=dataset)
-    fcg.dataset.to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
-    all_results = fcg.dataset
+    
+    # Save results
+    all_results.to_json(str(jsonl_path), orient="records", lines=True, force_ascii=False)
 
     df_all = pd.DataFrame(all_results)
     df_all.to_excel(str(output_dir / "output.xlsx"), index=False)

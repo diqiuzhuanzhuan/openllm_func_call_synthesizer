@@ -30,6 +30,125 @@ from xxhash import xxh64
 
 from openllm_func_call_synthesizer.core.formatter import QUERY_GENERATE_SYSTEM_HEADER
 from openllm_func_call_synthesizer.utils import extract_format, parse_hermes_tool_calls
+import ollama
+from transformers import AutoTokenizer
+import tqdm
+
+class OllamaFunctionCallGenerator:
+    """Generator using local Ollama instance directly."""
+    
+    def __init__(self, model_name: str, host: str = "http://localhost:11434", tokenizer_path: str = "Qwen/Qwen3-1.7B", generation_params: dict = None, **kwargs):
+        self.client = ollama.Client(host=host)
+        self.model_name = model_name
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
+        self.generation_params = generation_params or {}
+        print(f"Initialized OllamaFunctionCallGenerator with model={model_name}, host={host}")
+
+    def __call__(self, dataset):
+        results = []
+        print(f"Processing {len(dataset)} samples with Ollama...")
+        
+        for item in tqdm.tqdm(dataset):
+            # Construct messages
+            # Note: The original dataset item might have 'query'
+            query = item.get("query", "")
+            
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": query}
+            ]
+            
+            # Extract tools
+            tools = []
+            if "functions" in item:
+                if isinstance(item["functions"], str):
+                    try:
+                        tools = json.loads(item["functions"])
+                    except:
+                        pass
+                else:
+                    tools = item["functions"]
+            
+            # Apply chat template
+            try:
+                # Some tokenizers might not support tools argument in apply_chat_template directly 
+                # strictly following huggingface structure, we convert to OpenAI tools format if needed
+                # But here we assume the tokenizer supports it or we construct prompt manually
+                # Qwen 2.5/3 usually supports it.
+                prompt = self.tokenizer.apply_chat_template(
+                    messages, 
+                    tools=tools, 
+                    tokenize=False, 
+                    add_generation_prompt=True
+                )
+            except Exception as e:
+                print(f"Template application failed: {e}. Fallback to raw prompt.")
+                prompt = query
+
+            # Call Ollama
+            try:
+                # Filter out incompatible options
+                # Allow more Ollama generation parameters correctly
+                # Refer to: https://github.com/ollama/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values
+                valid_options = [
+                     "num_ctx", "seed",  "temperature", "seed", "stop", 
+                   "num_predict", "top_k", "top_p" ,"min_p"
+                ]
+                
+                options = {k: v for k, v in self.generation_params.items() if k in valid_options}
+                
+                # 'backend_params' are usually for litellm connectivity (base_url), 
+                # but 'generation_params' from config also contain logic params.
+                # 'num_ctx' is important specifically in ollama options.
+                
+                response = self.client.generate(
+                    model=self.model_name,
+                    prompt=prompt,
+                    think= self.generation_params.get("think", False),
+                    options=options,
+                    keep_alive="5m"
+                )
+                
+                generated_text = response.get("response", "")
+                
+                # Store results similar to Curator format
+                item["raw_output"] = generated_text
+                item["prompt"] = prompt
+                
+                # Try to parse tool calls (assuming Hermes/Qwen format if raw text)
+                # You might need specific parsing logic depending on what the model outputs
+                # For Qwen with tools, it often outputs <tool_call>...
+                
+                # Using the existing utility from synthesizer
+                # Note: parse_hermes_tool_calls expects a message dict usually, or text?
+                # Let's verify what parse_hermes_tool_calls does. 
+                # In strict mode, Qwen output might just be the content.
+                
+                # Let's create a fake message object for parsing compatibility
+                fake_message = {"content": generated_text}
+                parsed_fc = parse_hermes_tool_calls(fake_message)
+                
+                item["function_call"] = json.dumps(parsed_fc, ensure_ascii=False) if parsed_fc else ""
+                item["answer"] = json.dumps(fake_message, ensure_ascii=False)
+                
+                pretty.pprint("query: ")
+                pretty.pprint(query)
+                pretty.pprint("output: ")
+                pretty.pprint(generated_text)
+                pretty.pprint("gt_tool_calls: ")
+                pretty.pprint(item.get("gt_tool_calls",""))
+                results.append(item)
+                
+            except Exception as e:
+                print(f"Error processing item: {e}")
+                item["error"] = str(e)
+                results.append(item)
+                
+        # Return as a Dataset object to match interface, or DataFrame
+        import pandas as pd
+        from datasets import Dataset
+        df = pd.DataFrame(results)
+        return Dataset.from_pandas(df)
 
 
 class FunctionCallGenerator(curator.LLM):
