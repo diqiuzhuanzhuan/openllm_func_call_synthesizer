@@ -347,7 +347,8 @@ def critic_function_call_dataset(cfg: DictConfig):
     cg_args["functions_field"] = critic_cfg.functions_field
     cg_args["response_field"] = critic_cfg.response_field
     cg_args["purpose"] = purpose
-    critic_generate = Critic(**cg_args)
+    cg_args["use_gt"] = critic_cfg.use_ground_truth if "use_ground_truth" in critic_cfg else False
+    critic_generate = Critic(**cg_args) 
     max_num = cfg.synthesizer.function_call_generation.max_num
     if max_num > 0:
         dataset = dataset["train"].select(range(max_num))
