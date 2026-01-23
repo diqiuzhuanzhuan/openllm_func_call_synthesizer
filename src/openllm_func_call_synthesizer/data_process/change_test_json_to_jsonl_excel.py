@@ -1,5 +1,5 @@
 # function call数据，test data是json格式，
-# 用于openllm测试，需要jsonl格式 只保留query
+# 用于openllm测试，需要jsonl格式 只保留query和groundtruth
 # 用StandartTest测评， 需要excel格式
 
 import json
@@ -22,8 +22,13 @@ def change_json_to_jsonl(json_file_path, output_jsonl_path):
             for msg in item.get("messages", []):
                 if msg.get("role") == "user":
                     user_content = msg.get("content", "")
-                    break
-            out_line = {"query": user_content}
+                if msg.get("role") == "assistant":
+                    tool_calls = []
+                    for tool_call in msg.get("tool_calls"):
+                        tool_calls.append(tool_call.get("function"))
+                    ground_truth = json.dumps(tool_calls,ensure_ascii=False) if tool_calls \
+                    else msg.get("content","")
+            out_line = {"query": user_content,"ground_truth": ground_truth}
             fout.write(json.dumps(out_line, ensure_ascii=False) + "\n")
 
     # 可选：预览前3个样本
@@ -107,8 +112,9 @@ def change_excel_to_jsonl(excel_file_path, output_jsonl_path):
 if __name__ == "__main__":
     root = "/data/work/CHenXuFei/data/function_call_data/train_data_fc_0114_fixed/"
     json_file_path = root + "mcp_test_fc.json"
-    output_jsonl_path = root + "mcp_test_fc.jsonl"
-    output_excel_path = root + "mcp_test_fc.xlsx"
+    output_root="/data/work/CHenXuFei/openllm_func_call_synthesizer/data/for_llm_test/"
+    output_jsonl_path = output_root + "mcp_test_fc_query_gt.jsonl"
+    output_excel_path = output_root + "mcp_test_fc.xlsx"
     change_json_to_jsonl(json_file_path, output_jsonl_path)
 
     #change_json_to_excel(json_file_path, output_excel_path)

@@ -185,6 +185,7 @@ class Critic(curator.LLM):
         functions_field="functions",
         response_field="response",
         purpose="function_call",
+        use_gt=False,
         **kwargs,
     ):
         super().__init__(
@@ -195,6 +196,7 @@ class Critic(curator.LLM):
         self.label_field = label_field
         self.functions_field = functions_field
         self.response_field = response_field
+        self.use_gt = use_gt
         self.purpose=purpose
 
     def prompt(self, input: dict) -> dict:
@@ -235,22 +237,48 @@ class Critic(curator.LLM):
             
         print("===========answer_filter_think============\n", answer_filter_think)
         model_output = label if label else answer_filter_think
-        user_prompt = f"""
-        The given instruction is {task_prompt}.
-        The available functions are: {functions}
-        The model output is :{model_output}
-        """
+        ground_truth = input.get("ground_truth","")
+        
+        if self.use_gt:
+          if not ground_truth:
+            raise ValueError("ground_truth is required")
+          user_prompt = f"""
+          The given instruction is {task_prompt}.
+          The available functions are: {functions}.
+          The model output is :{model_output}.
+          The ground truth is:{ground_truth}.
+          """
+        else:
+          user_prompt = f"""
+          The given instruction is {task_prompt}.
+          The available functions are: {functions}.
+          The model output is :{model_output}.
+          """
         return [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
     def parse(self, input: dict, response) -> dict:
         """Parse the response to extract the function call or the message."""
         input["prompt"] = self.prompt(input)
-        json_extract = extract_format(format="json", content=response["choices"][0]["message"]["content"])
+        
+        # Clean the response content first
+        raw_content = response["choices"][0]["message"]["content"]
+        # Remove <think>...</think> blocks from the critic's own output if present
+        clean_content = re.sub(r'<think>.*?</think>', '', raw_content, flags=re.DOTALL).strip()
+        
+        json_extract = extract_format(format="json", content=clean_content)
+        if json_extract is None:
+            # Fallback: try to extract from raw_content just in case regex failed on cleaned version
+            # (e.g. if the json strictly relies on structure that was partly inside think - unlikely but possible)
+            json_extract = extract_format(format="json", content=raw_content)
+
         if json_extract is None:
             input["score"] = 0
             input["reason"] = "Failed to parse critic response as JSON"
+            # Optional: store raw output for debugging
+            input["raw_critic_output"] = raw_content
         else:
             score, reason = json_extract.get("score", 0), json_extract.get("reason", "No reason provided")
             input["score"] = score
             input["reason"] = reason
+            input["raw_critic_output"] = raw_content
         return input

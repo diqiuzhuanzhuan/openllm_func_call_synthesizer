@@ -91,6 +91,7 @@ critic:
   functions_field: "functions"
   response_field: "answer"
   output_format: "jsonl"   # or "json", "csv", xlsx, "parquet"
+  use_ground_truth : False  #如果True则原始数据必须要有ground_truth字段
   name: "function_call_gpt_4o_critiqued_by_gpt_5_mini_2025_08_07"
   provider:
     model_name: "gpt-5-mini-2025-08-07"

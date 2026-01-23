@@ -235,3 +235,7 @@ examples/conf/synthesizer/generate_ground_truth.yaml
 .gitignore
 src/openllm_func_call_synthesizer/data_process/change_test_json_to_jsonl_excel.py
 
+examples/conf/synthesizer/evaluate_susie.yaml
+examples/conf/synthesizer/evaluation_fc2.yaml
+src/openllm_func_call_synthesizer/data_process/data_process_for_function_call_pipeline.py
+

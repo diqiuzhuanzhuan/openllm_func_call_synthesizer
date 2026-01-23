@@ -135,8 +135,8 @@ class OllamaFunctionCallGenerator:
                 pretty.pprint(query)
                 pretty.pprint("output: ")
                 pretty.pprint(generated_text)
-                pretty.pprint("gt_tool_calls: ")
-                pretty.pprint(item.get("gt_tool_calls",""))
+                pretty.pprint("ground_truth: ")
+                pretty.pprint(item.get("ground_truth",""))
                 results.append(item)
                 
             except Exception as e:
@@ -162,7 +162,11 @@ class FunctionCallGenerator(curator.LLM):
         # return f"""
         # {input["query"]}
         # """
-        return input["query"].strip()
+        messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": input["query"].strip()}
+            ]
+        return messages
 
     def _parse_function_call(self, raw_output: dict) -> dict:
         parsed = []
@@ -254,8 +258,8 @@ class FunctionCallGenerator(curator.LLM):
             if "function_call" in this_input:
                 pretty.pprint("function_call: ")
                 pretty.pprint(this_input["function_call"])
-            pretty.pprint("gt_tool_calls: ")
-            pretty.pprint(this_input.get("gt_tool_calls",""))
+            pretty.pprint("ground_truth: ")
+            pretty.pprint(this_input.get("ground_truth",""))
             input_ls.append(this_input)
         # Deduplicate before return
         if len(input_ls) > 1:
