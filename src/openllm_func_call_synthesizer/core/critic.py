@@ -247,6 +247,7 @@ class Critic(curator.LLM):
           The available functions are: {functions}.
           The model output is :{model_output}.
           The ground truth is:{ground_truth}.
+          You need to score the model output based on the ground truth and the scoring rules, making sure not to confuse the model output with the ground truth.
           """
         else:
           user_prompt = f"""
